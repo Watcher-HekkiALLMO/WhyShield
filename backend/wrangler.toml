@@ -1,0 +1,17 @@
+name = "whyshield-backend"
+main = "src/index.ts"
+compatibility_date = "2026-04-26"
+compatibility_flags = ["nodejs_compat"]
+
+# 24h verdict cache, keyed by sha256(normalizedUrl).
+#
+# Local dev: the `pnpm dev` script passes `--kv VERDICT_CACHE` to wrangler,
+# which creates an in-memory KV namespace automatically. No setup needed.
+#
+# Production: uncomment the block below, then run
+#   wrangler kv namespace create VERDICT_CACHE
+# and paste the returned id.
+#
+# [[kv_namespaces]]
+# binding = "VERDICT_CACHE"
+# id = "REPLACE_WITH_KV_NAMESPACE_ID"
