@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WhyShield warning</title>
+    <link rel="stylesheet" href="./warning.css" />
+  </head>
+  <body>
+    <main class="card" role="main">
+      <div class="icon" aria-hidden="true">⚠</div>
+      <h1 id="headline">Checking this page</h1>
+      <p id="explanation" class="explanation"></p>
+      <p class="source">
+        <span class="source-label">Address:</span>
+        <span id="source-url" class="source-url"></span>
+      </p>
+      <div class="actions">
+        <button id="explain-btn" type="button" class="btn btn-secondary">Explain why</button>
+        <button id="back-btn" type="button" class="btn btn-primary">Go back</button>
+        <button id="continue-btn" type="button" class="btn btn-tertiary">Continue anyway</button>
+      </div>
+      <p class="footnote">
+        Continuing skips this warning for the next hour on this exact host.
+        Subdomains are still checked separately.
+      </p>
+    </main>
+    <script type="module" src="./warning.ts"></script>
+  </body>
+</html>
