@@ -5,13 +5,15 @@ compatibility_flags = ["nodejs_compat"]
 
 # 24h verdict cache, keyed by sha256(normalizedUrl).
 #
-# Local dev: the `pnpm dev` script passes `--kv VERDICT_CACHE` to wrangler,
-# which creates an in-memory KV namespace automatically. No setup needed.
+# The `id` below is a fake-but-format-valid placeholder. In local dev
+# (`wrangler dev`, which is local by default in wrangler 3+), Miniflare
+# provides an in-memory KV simulator and ignores the id entirely — the
+# binding works as long as the block is present.
 #
-# Production: uncomment the block below, then run
-#   wrangler kv namespace create VERDICT_CACHE
-# and paste the returned id.
-#
-# [[kv_namespaces]]
-# binding = "VERDICT_CACHE"
-# id = "REPLACE_WITH_KV_NAMESPACE_ID"
+# Before deploying to Cloudflare for real:
+#   1. Run `wrangler kv namespace create VERDICT_CACHE`
+#   2. Replace the placeholder id below with the returned id
+#   3. `wrangler deploy`
+[[kv_namespaces]]
+binding = "VERDICT_CACHE"
+id = "0000000000000000000000000000abcd"

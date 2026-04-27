@@ -76,6 +76,25 @@ Stack:
   - Secrets:  never committed. Backend uses Cloudflare env vars; the
               extension carries no secrets at all.
 
+## Local development
+- Backend: `cd backend && pnpm dev` (runs `wrangler dev`). Wrangler 3 is local
+  by default and uses Miniflare to simulate KV in-memory. The
+  `[[kv_namespaces]]` block in `backend/wrangler.toml` declares a fake
+  placeholder id (`0000000000000000000000000000abcd`) — Miniflare ignores
+  this id locally and provides a working in-memory namespace. **Do not** try
+  to use `--kv VERDICT_CACHE` as a wrangler flag; that flag does not exist.
+  Replace the placeholder id only when wiring up a real Cloudflare deploy.
+- Backend dev server should print `Ready on http://127.0.0.1:8787`. Two
+  warnings on startup are expected and safe to ignore: (a) "wrangler is
+  out-of-date" (we're pinned to wrangler 3 deliberately for now) and (b) a
+  compatibility-date fallback warning because our `compatibility_date` is
+  newer than what wrangler 3's bundled workerd supports.
+- Extension: `cd extension && pnpm dev` (Vite + CRXJS HMR). After load-
+  unpacked from `extension/dist/`, click reload on `chrome://extensions`
+  after rebuilds for the service worker to pick up changes.
+- `.dev.vars` (gitignored) holds `ANTHROPIC_API_KEY` for the backend.
+  Copy from `.dev.vars.example` and fill in.
+
 ## What v1 "done" looks like (north star — not to be built in one prompt)
 1. Backend deployed to Cloudflare Workers, public URL.
 2. POST /analyze/url returns

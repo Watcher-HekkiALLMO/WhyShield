@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --kv VERDICT_CACHE",
+    "dev": "wrangler dev",
     "build": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

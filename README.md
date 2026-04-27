@@ -8,8 +8,8 @@ Most safety tools block silently. WhyShield teaches.
 
 Early development. This repo currently contains:
 
-- `/backend` — Cloudflare Worker that analyzes URLs (in progress)
-- `/extension` — Chrome extension (not yet started)
+- `/backend` — Cloudflare Worker with `POST /analyze/url` (heuristics + Claude Haiku fallback, KV verdict cache)
+- `/extension` — Chrome extension (Manifest V3) with URL warning interstitial; side-panel streaming and Gmail email warnings still to come
 
 ## Repo layout
 
@@ -28,6 +28,10 @@ cd backend
 cp .dev.vars.example .dev.vars   # then edit and add your ANTHROPIC_API_KEY
 pnpm dev                          # starts wrangler dev on http://localhost:8787
 ```
+
+You should see `[wrangler:inf] Ready on http://127.0.0.1:8787`. Two startup warnings are expected and safe to ignore: a "wrangler is out-of-date" notice (we're pinned to v3 for now), and a compatibility-date fallback notice (our manifest declares a date newer than wrangler 3's bundled runtime supports — production Cloudflare will support it).
+
+The KV namespace id in `backend/wrangler.toml` is a fake placeholder (`0000000000000000000000000000abcd`). In local dev, Miniflare ignores it and provides an in-memory simulator. Replace it with a real id only when deploying to Cloudflare.
 
 Test the URL analyzer:
 
