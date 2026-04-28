@@ -76,6 +76,30 @@ Stack:
   - Secrets:  never committed. Backend uses Cloudflare env vars; the
               extension carries no secrets at all.
 
+### Streaming endpoints
+- `POST /explain/url` returns SSE (`text/event-stream`).
+- Each event: `data: ${JSON.stringify(textChunk)}\n\n`. JSON-encoded so embedded
+  newlines and quotes pass through intact. Stream ends with `data: [DONE]\n\n`.
+- Fail-open: on any Anthropic error the server emits a single static fallback
+  chunk in the same shape and then `[DONE]`. Clients render fallback identically
+  to a real stream — no special-case path.
+- The streaming pipeline (`streamExplanation` in `/backend/src/explain.ts`) is
+  decoupled from Hono Context so it will be reused for `/explain/email` later.
+
+### Side panel context passing
+- Warning page → background worker via
+  `chrome.runtime.sendMessage({ type: "explain-context", context })`.
+- Background writes the context to `chrome.storage.session` under
+  `explain:tab-{tabId}`.
+- Side panel on mount reads + **immediately deletes** the entry, then starts
+  streaming. `chrome.storage.session` has the right TTL (wiped when the
+  browser closes); tab-id keys avoid cross-tab leakage.
+- "Multiple Explain Why clicks = fresh stream" works because the side panel
+  listens to `chrome.storage.onChanged` and re-streams when its tab's key is
+  rewritten.
+- Reopening the side panel from the toolbar after consumption lands on the
+  no-data state, by design.
+
 ## Local development
 - Backend: `cd backend && pnpm dev` (runs `wrangler dev`). Wrangler 3 is local
   by default and uses Miniflare to simulate KV in-memory. The

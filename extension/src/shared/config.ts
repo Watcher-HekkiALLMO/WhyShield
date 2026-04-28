@@ -11,3 +11,13 @@ export const SUSPICIOUS_INTERSTITIAL_THRESHOLD = 0.7;
 
 // Path inside the extension to the warning interstitial HTML.
 export const WARNING_PAGE_PATH = "src/warning/index.html";
+
+// Backend SSE endpoint for streaming Claude explanations.
+export const EXPLAIN_URL_PATH = "/explain/url";
+
+// chrome.storage.session key prefix for per-tab explain context. Full
+// key: `${EXPLAIN_CONTEXT_KEY_PREFIX}${tabId}`. The side panel reads and
+// immediately deletes its tab's entry on mount, so reopening the panel
+// from the toolbar without re-clicking "Explain why" lands on the
+// no-data state by design.
+export const EXPLAIN_CONTEXT_KEY_PREFIX = "explain:tab-";

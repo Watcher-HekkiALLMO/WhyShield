@@ -28,3 +28,12 @@ export type ReasonCode =
   | "punycode-host"
   | "model-flagged"
   | "model-cleared";
+
+// Input to POST /explain/url. The extension constructs this from a prior
+// /analyze/url verdict response.
+export interface ExplainUrlRequest {
+  url: string;
+  verdict: Verdict;
+  confidence: number;
+  reasons: Reason[];
+}

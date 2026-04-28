@@ -55,10 +55,26 @@ function headlineFor(reasons: Reason[]): string {
   }
 }
 
-async function onExplainWhy(): Promise<void> {
-  // Side-panel streaming lands in a future session — for now the panel
-  // shows a placeholder. Opening it requires a window id and a user
-  // gesture (this button click counts).
+async function onExplainWhy(params: WarningParams): Promise<void> {
+  // The side panel reads its context from chrome.storage.session on
+  // mount (and on storage.onChanged, for repeat clicks). The background
+  // worker writes the entry under the current tab's id when it receives
+  // this message.
+  //
+  // CONTRACT: await sendMessage before opening the panel. If we open
+  // first, the panel mounts before storage.session is populated and
+  // renders the no-data state. The worker holds up its side by awaiting
+  // the storage write before calling sendResponse.
+  await chrome.runtime.sendMessage({
+    type: "explain-context",
+    context: {
+      url: params.url,
+      verdict: params.verdict,
+      confidence: params.confidence,
+      reasons: params.reasons,
+    },
+  });
+
   const win = await chrome.windows.getCurrent();
   if (win.id !== undefined) {
     await chrome.sidePanel.open({ windowId: win.id });
@@ -104,7 +120,7 @@ function render(params: WarningParams): void {
   document.getElementById("source-url")!.textContent = params.url;
 
   document.getElementById("explain-btn")!.addEventListener("click", () => {
-    void onExplainWhy();
+    void onExplainWhy(params);
   });
   document.getElementById("back-btn")!.addEventListener("click", () => {
     void onGoBack();

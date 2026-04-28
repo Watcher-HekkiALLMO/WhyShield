@@ -1,5 +1,9 @@
-import { SUSPICIOUS_INTERSTITIAL_THRESHOLD, WARNING_PAGE_PATH } from "../shared/config";
-import type { AnalyzeResponse } from "../shared/types";
+import {
+  EXPLAIN_CONTEXT_KEY_PREFIX,
+  SUSPICIOUS_INTERSTITIAL_THRESHOLD,
+  WARNING_PAGE_PATH,
+} from "../shared/config";
+import type { AnalyzeResponse, ExplainContext } from "../shared/types";
 import { analyzeUrl } from "./api";
 import { bypassHost, getCachedVerdict, isHostBypassed, putCachedVerdict } from "./storage";
 
@@ -76,6 +80,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
     if (msg?.type === "close-tab" && sender.tab?.id !== undefined) {
       await chrome.tabs.remove(sender.tab.id);
+      sendResponse({ ok: true });
+      return;
+    }
+    if (msg?.type === "explain-context" && msg.context && sender.tab?.id !== undefined) {
+      // CONTRACT: respond AFTER chrome.storage.session.set resolves.
+      // The warning page awaits this ack before calling
+      // chrome.sidePanel.open; if we acked early, the panel could mount
+      // before the entry exists and render no-data.
+      const key = `${EXPLAIN_CONTEXT_KEY_PREFIX}${sender.tab.id}`;
+      await chrome.storage.session.set({ [key]: msg.context as ExplainContext });
       sendResponse({ ok: true });
       return;
     }

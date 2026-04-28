@@ -53,7 +53,7 @@ With both terminals running and the extension loaded:
 2. Background worker calls `POST /analyze/url`. Backend returns `{ verdict: "malicious", reasons: [{ code: "typosquat-of-brand", detail: "paypal.com" }], ... }`.
 3. Tab gets redirected to the warning interstitial.
 4. Three buttons:
-   - **Explain why** — opens the side panel with a placeholder. (Streaming explanation lands in a future session.)
+   - **Explain why** — opens the side panel and streams a Sonnet-generated educational explanation.
    - **Go back** — `history.back()` if there's history; otherwise asks the worker to close the tab via `chrome.tabs.remove`.
    - **Continue anyway** — registers a 1-hour bypass for the exact host (`paypa1.com`), then redirects to the original URL.
 
@@ -69,9 +69,14 @@ To clear all caches: same path, click **Clear all**.
 
 `BACKEND_URL` is hardcoded in `src/shared/config.ts` to `http://localhost:8787`. When we deploy to Cloudflare, this becomes a `chrome.storage.local`-backed setting with a default. For now: edit the constant and rebuild.
 
+## "Explain why" streaming
+
+Click **Explain why** on the warning interstitial → side panel opens → a Sonnet-generated 2–3 paragraph educational explanation streams in, character by character, in plain English. Multiple clicks generate fresh explanations (no caching for explanations in v1; verdicts are still cached for 24h on the backend). If the network drops mid-stream, the side panel keeps what it got plus a **Try again** button.
+
+Reopening the side panel from the toolbar (without a fresh "Explain why" click) lands on a no-data state — context-passing through `chrome.storage.session` is consume-on-read, so toolbar opens don't re-show stale explanations.
+
 ## What's not done yet
 
-- "Explain why" side-panel streaming with Claude (next session)
 - Gmail content script / email warnings
 - Settings page (whitelist, sensitivity slider, dev/prod backend switcher)
 - Real Watcher mascot art (currently a placeholder shield SVG)

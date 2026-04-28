@@ -52,6 +52,21 @@ Expected response shape:
 }
 ```
 
+Stream a Sonnet explanation:
+
+```bash
+curl -N -X POST http://localhost:8787/explain/url \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://paypa1.com/login",
+    "verdict": "malicious",
+    "confidence": 0.95,
+    "reasons": [{"code": "typosquat-of-brand", "detail": "paypal.com"}]
+  }'
+```
+
+Returns Server-Sent Events. Each event has shape `data: "<JSON-encoded text chunk>"`. Stream ends with `data: [DONE]`. The `-N` (no-buffer) flag is required to see chunks as they arrive.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

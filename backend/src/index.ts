@@ -1,6 +1,9 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { streamSSE } from "hono/streaming";
 import { getCachedVerdict, putCachedVerdict } from "./cache";
 import { classifyWithClaude } from "./claude";
+import { streamExplanation, validateExplainRequest } from "./explain";
 import { runHeuristics } from "./heuristics";
 import { normalizeUrl } from "./heuristics/normalize";
 import type { AnalyzeResponse, AnalyzeUrlRequest } from "./types";
@@ -11,6 +14,20 @@ interface Env {
 }
 
 const app = new Hono<{ Bindings: Env }>();
+
+// CORS for extension pages (the side panel) talking to this backend.
+// The extension's background worker bypasses CORS via host_permissions,
+// but extension pages still go through normal browser CORS. Reflect any
+// chrome-extension origin since the dev/prod IDs differ.
+app.use(
+  "*",
+  cors({
+    origin: (origin) =>
+      origin && origin.startsWith("chrome-extension://") ? origin : "",
+    allowMethods: ["POST", "OPTIONS"],
+    allowHeaders: ["Content-Type"],
+  }),
+);
 
 app.get("/", (c) => c.text("WhyShield backend OK"));
 
@@ -58,6 +75,18 @@ app.post("/analyze/url", async (c) => {
   });
   await putCachedVerdict(c.env.VERDICT_CACHE, cacheKey, claudeVerdict);
   return c.json(claudeVerdict);
+});
+
+// Streaming educational explanation. SSE; see explain.ts for shape.
+app.post("/explain/url", async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const body = validateExplainRequest(raw);
+  if (!body) {
+    return c.json({ error: "Required: { url, verdict, confidence, reasons[] }" }, 400);
+  }
+  return streamSSE(c, (stream) =>
+    streamExplanation(stream, c.env.ANTHROPIC_API_KEY, body),
+  );
 });
 
 export default app;

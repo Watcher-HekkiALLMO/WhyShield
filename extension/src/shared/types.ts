@@ -34,3 +34,14 @@ export interface CachedVerdict {
 export interface BypassEntry {
   expiresAt: number; // ms epoch
 }
+
+// Context the side panel needs to start streaming an explanation. Mirrors
+// /backend/src/types.ts ExplainUrlRequest. Written by the warning page
+// (via the background worker) into chrome.storage.session keyed by tab
+// id, then consumed on read by the side panel.
+export interface ExplainContext {
+  url: string;
+  verdict: Verdict;
+  confidence: number;
+  reasons: Reason[];
+}

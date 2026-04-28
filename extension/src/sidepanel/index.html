@@ -2,30 +2,35 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WhyShield</title>
-    <style>
-      body {
-        font: 14px/1.5 system-ui, -apple-system, sans-serif;
-        padding: 20px;
-        background: #0f172a;
-        color: #e2e8f0;
-        margin: 0;
-      }
-      h1 {
-        font-size: 16px;
-        font-weight: 600;
-        margin: 0 0 12px;
-      }
-      p {
-        margin: 0 0 12px;
-        color: #94a3b8;
-      }
-    </style>
+    <link rel="stylesheet" href="./sidepanel.css" />
   </head>
-  <body>
-    <h1>WhyShield</h1>
-    <p>
-      Detailed explanation coming in the next update — for now, the summary above is what we know.
-    </p>
+  <body data-state="opening">
+    <header class="header">
+      <div class="brand">WhyShield</div>
+      <div class="meta" id="meta" hidden>
+        <span class="badge" id="badge"></span>
+        <span class="url" id="url-display"></span>
+      </div>
+    </header>
+    <main class="content">
+      <div id="skeleton" class="skeleton">
+        <div class="skel-line"></div>
+        <div class="skel-line"></div>
+        <div class="skel-line short"></div>
+      </div>
+      <p id="explanation" class="explanation" hidden></p>
+      <div id="error-actions" class="error-actions" hidden>
+        <button id="retry-btn" type="button" class="btn-retry">Try again</button>
+      </div>
+      <div id="empty" class="empty" hidden>
+        <p>
+          To see a detailed explanation here, click <strong>Explain why</strong> on a warning
+          page.
+        </p>
+      </div>
+    </main>
+    <script type="module" src="./sidepanel.ts"></script>
   </body>
 </html>
