@@ -100,6 +100,84 @@ Stack:
 - Reopening the side panel from the toolbar after consumption lands on the
   no-data state, by design.
 
+## Known v2 priorities
+
+These are deliberate post-v1 items captured here so future sessions don't
+lose track of them. None block v1 (URL + email warning loops). Roughly
+ordered by user-visible impact.
+
+### Internationalization (i18n)
+- Spanish first — largest underserved phishing-target population in the
+  US, and existing security tools (Defender, Norton, Guardio) underserve
+  this group.
+- Then Portuguese, French, Mandarin (rough order, revisit at decision
+  time).
+- Four layers of work:
+  1. Static UI strings via chrome.i18n.getMessage() with
+     _locales/{lang}/messages.json files.
+  2. Heuristic explanation templates in
+     /backend/src/heuristics/index.ts — localized per language, backend
+     receives Accept-Language hint from the extension.
+  3. Claude system prompts get a "Respond in {locale}" instruction.
+     (Easiest of the four — single prompt edit + param pass.)
+  4. Phishing keyword corpus per language. Phrases like "su cuenta ha
+     sido suspendida" must be researched and curated, not translated
+     from the English list.
+
+### Heuristic tuning
+Surfaced during smoke testing:
+- Typosquat heuristic should also try matching against the FIRST label
+  of a multi-word domain (e.g., "amaz0n" from "amaz0n-shipping.tk"),
+  not only the registrable domain. Currently we miss these.
+- Combined-signal scoring: a suspicious TLD plus a brand keyword in the
+  host name should score higher than the TLD alone. Currently each
+  heuristic fires independently with no compounding.
+
+### Real Watcher mascot
+Replace the placeholder shield SVG with the actual Watcher illustration.
+Hand-out "stop" pose for malicious warnings, calm pose for safe states.
+When this lands, re-tune the verdict-badge palette holistically — the
+saturated red on the malicious badge is currently the only deep red in
+the product and may want to soften.
+
+### Settings page
+- Per-user whitelist of trusted hosts.
+- Sensitivity slider (lower threshold = more warnings; higher = fewer).
+- Dev/prod backend switcher (chrome.storage.local override of
+  BACKEND_URL).
+- Bring-your-own-key (BYOK) — power users paste their own Anthropic API
+  key, their usage bills their account, raises their effective rate
+  limit.
+
+### Production deploy
+- Cloudflare Workers deploy (currently localhost-only).
+- Real KV namespace via `wrangler kv namespace create VERDICT_CACHE`.
+- ANTHROPIC_API_KEY as a worker secret (not committed .dev.vars).
+- Extension BACKEND_URL switches to production worker URL.
+- Per-install rate limiting (architecture is there, implementation isn't).
+- Hard monthly spending cap on the Anthropic account before public
+  launch.
+
+### Tooling upgrades
+- Wrangler 3.114.17 → 4 (currently has deprecation warnings about the
+  compatibility date).
+- @crxjs/vite-plugin off the 2.0.0-beta.28 (currently flagged
+  deprecated).
+- Both deferrable until they bite or until production deploy forces
+  them.
+
+### Privacy options
+- Optional local-model mode via Ollama. Routes analysis to a
+  user-provided local Llama / Phi instance instead of the cloud worker.
+  Slower, less accurate, but zero data leaves the user's machine.
+  Opt-in setting on the settings page.
+
+### Distribution
+- Chrome Web Store listing (privacy policy, screenshots, description,
+  Single-Purpose statement).
+- Apply for Anthropic OSS / startup API credits once the project has
+  visible traction.
+
 ## Local development
 - Backend: `cd backend && pnpm dev` (runs `wrangler dev`). Wrangler 3 is local
   by default and uses Miniflare to simulate KV in-memory. The

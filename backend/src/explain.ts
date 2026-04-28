@@ -64,25 +64,31 @@ export function validateExplainRequest(body: unknown): ExplainUrlRequest | null 
   };
 }
 
+// Parameters for streamExplanation. Decouples the streaming pipeline
+// from the URL-specific prompt + builder so /explain/email can pass its
+// own pair through the same SSE machinery.
+export interface StreamExplanationParams {
+  system: string;
+  user: string;
+  fallback: string;
+}
+
 // Stream a Sonnet explanation as SSE deltas, with a static fallback if
 // the model call throws. SSE shape: each text delta sent as
 // `data: ${JSON.stringify(text)}\n\n` (JSON-encoded so newlines and quotes
 // survive); stream ends with `data: [DONE]\n\n`.
-//
-// Decoupled from the Hono Context so the same function will work for
-// /explain/email later — only buildUserMessage and the validator change.
 export async function streamExplanation(
   stream: SSEStreamingApi,
   apiKey: string,
-  input: ExplainUrlRequest,
+  params: StreamExplanationParams,
 ): Promise<void> {
   const client = new Anthropic({ apiKey });
   try {
     const response = await client.messages.create({
       model: EXPLAIN_MODEL,
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: buildUserMessage(input) }],
+      system: params.system,
+      messages: [{ role: "user", content: params.user }],
       stream: true,
     });
     for await (const event of response) {
@@ -91,7 +97,7 @@ export async function streamExplanation(
       }
     }
   } catch {
-    await stream.writeSSE({ data: JSON.stringify(FALLBACK_TEXT) });
+    await stream.writeSSE({ data: JSON.stringify(params.fallback) });
   }
   await stream.writeSSE({ data: "[DONE]" });
 }
