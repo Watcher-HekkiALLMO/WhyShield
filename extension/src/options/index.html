@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WhyShield settings</title>
+    <link rel="stylesheet" href="./options.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="header">
+        <h1 class="brand">WhyShield</h1>
+        <p class="tagline">Settings</p>
+      </header>
+
+      <form id="settings-form" class="form" novalidate>
+        <section class="section">
+          <h2 class="section-title">Warnings</h2>
+
+          <label class="toggle">
+            <input type="checkbox" id="url-warnings" />
+            <span class="track" aria-hidden="true"></span>
+            <span class="toggle-text">
+              <span class="toggle-label">Warn me about look-alike websites</span>
+              <span class="hint">Checks each page before it loads and pauses if it might be impersonating a real site.</span>
+            </span>
+          </label>
+
+          <label class="toggle">
+            <input type="checkbox" id="email-warnings" />
+            <span class="track" aria-hidden="true"></span>
+            <span class="toggle-text">
+              <span class="toggle-label">Warn me about suspicious emails in Gmail</span>
+              <span class="hint">Shows a banner above an open email when something about it looks off.</span>
+            </span>
+          </label>
+
+          <div class="field">
+            <label class="label" for="sensitivity">How cautious should WhyShield be?</label>
+            <div class="slider-row">
+              <span class="slider-end">More warnings</span>
+              <input type="range" id="sensitivity" min="0.5" max="0.9" step="0.05" />
+              <span class="slider-end">Fewer warnings</span>
+            </div>
+            <p class="hint">
+              Only affects borderline cases. Clear-cut threats are always flagged.
+              Current threshold: <span id="sensitivity-value" class="mono"></span>
+            </p>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">Trusted sites</h2>
+          <div class="field">
+            <label class="label" for="trusted-hosts">Sites WhyShield should never check</label>
+            <textarea
+              id="trusted-hosts"
+              rows="5"
+              spellcheck="false"
+              placeholder="example.com&#10;intranet.mycompany.com"
+            ></textarea>
+            <p class="hint">
+              One site per line. Each entry covers exactly that address: adding
+              <span class="mono">example.com</span> does not cover
+              <span class="mono">login.example.com</span>.
+            </p>
+            <p class="hint">
+              Applies to website warnings. Emails are always checked, because sender addresses
+              can be faked.
+            </p>
+            <p class="error" id="trusted-hosts-error" hidden></p>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">Connection</h2>
+          <div class="field">
+            <label class="label" for="backend-url">Backend address</label>
+            <input type="url" id="backend-url" spellcheck="false" autocomplete="off" />
+            <p class="hint">
+              Where WhyShield sends pages and emails for analysis. Leave as is unless you run
+              your own server.
+            </p>
+            <p class="error" id="backend-url-error" hidden></p>
+          </div>
+
+          <div class="field">
+            <label class="label" for="api-key">
+              Your own Anthropic API key <span class="optional">(optional)</span>
+            </label>
+            <!-- new-password, not off: Chrome ignores autocomplete="off" on
+                 password fields and may offer to save the key into Google
+                 Password Manager, which syncs. new-password suppresses that. -->
+            <input type="password" id="api-key" autocomplete="new-password" spellcheck="false" />
+            <p class="hint">
+              If set, explanations are billed to your Anthropic account instead of the shared
+              one. The key is sent with each request and only kept on this computer.
+            </p>
+          </div>
+        </section>
+
+        <div class="actions">
+          <button type="submit" id="save-btn" class="btn btn-primary">Save</button>
+          <button type="button" id="reset-btn" class="btn btn-secondary">Reset to defaults</button>
+          <span id="status" class="status" role="status" aria-live="polite"></span>
+        </div>
+      </form>
+    </main>
+    <script type="module" src="./options.ts"></script>
+  </body>
+</html>

@@ -1,12 +1,17 @@
-// Local dev backend. When we deploy to Cloudflare, we'll add a
-// chrome.storage override so users (and CI) can flip between dev and prod.
+// Default backend. Users can override it on the settings page; runtime
+// code reads the effective value via getSettings() in shared/settings.ts,
+// never this constant directly.
 export const BACKEND_URL = "http://localhost:8787";
+
+// Backend endpoint for URL analysis.
+export const ANALYZE_URL_PATH = "/analyze/url";
 
 export const VERDICT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const BYPASS_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-// Threshold above which a "suspicious" verdict triggers the interstitial.
-// Below this, navigation proceeds silently.
+// Default threshold at or above which a "suspicious" verdict triggers a
+// warning (URL interstitial or email banner). The user tunes this on the
+// settings page as "sensitivity"; consumers read it via getSettings().
 export const SUSPICIOUS_INTERSTITIAL_THRESHOLD = 0.7;
 
 // Path inside the extension to the warning interstitial HTML.

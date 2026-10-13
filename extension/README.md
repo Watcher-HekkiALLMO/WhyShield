@@ -106,9 +106,29 @@ The link in step 4 is a typosquat of `paypal.com` — the backend bubbles it up 
 
 After loading the updated extension: navigate to `http://paypa1.com/login`. The URL warning interstitial should still appear with all three buttons working as before — the discriminated `ExplainContext` union doesn't break the existing path because warning.ts now passes `type: "url"` in its context payload.
 
-## Pointing at a non-local backend
+## Settings page
 
-`BACKEND_URL` is hardcoded in `src/shared/config.ts` to `http://localhost:8787`. When we deploy to Cloudflare, this becomes a `chrome.storage.local`-backed setting with a default. For now: edit the constant and rebuild.
+Open it by right-clicking the WhyShield toolbar icon → **Options**, or via `chrome://extensions` → WhyShield → **Details** → **Extension options**. It opens in a full tab.
+
+| Setting | Default | Stored in | Notes |
+| --- | --- | --- | --- |
+| Warn about look-alike websites | on | sync | Off = the background worker ignores navigations entirely. |
+| Warn about suspicious emails in Gmail | on | sync | Off = the Gmail observer is never attached. Turning it on with Gmail open starts it without a reload. |
+| Sensitivity | 0.70 | sync | Threshold for "suspicious" verdicts. 0.5 = more warnings, 0.9 = fewer. "Malicious" always warns. |
+| Trusted sites | empty | sync | One host per line, exact match, no subdomain inheritance. Skips analysis entirely. URL-only: emails are always checked because senders can be faked. |
+| Backend address | `http://localhost:8787` | sync | Must be a well-formed http(s) URL or the save is refused. |
+| Your own Anthropic API key | empty | **local only** | Sent as `X-WhyShield-API-Key` on every backend request; the backend uses it for that request's Claude calls. Never synced, never logged. |
+
+Changes apply on the next navigation or next email opened; no extension reload needed. **Save** is all-or-nothing: a bad backend URL or an unreadable trusted-host line shows an inline message and nothing is written. **Reset to defaults** also clears the API key.
+
+Every runtime consumer reads these through `getSettings()` in `src/shared/settings.ts`. The constants in `src/shared/config.ts` are only the defaults.
+
+### Testing the settings
+
+1. Add `paypa1.com` under Trusted sites, save, navigate to `http://paypa1.com/login`. No warning, and no `/analyze/url` request in the backend log.
+2. Remove it, drag Sensitivity to 0.9, save. Borderline "suspicious" verdicts stop warning; the `paypa1.com` typosquat (a "malicious" verdict) still warns.
+3. Turn off "Warn me about suspicious emails in Gmail", reload Gmail, open the test phishing email from the recipe above. No banner. Turn it back on without reloading Gmail, click into another email and back. Banner returns.
+4. Paste a deliberately wrong key (e.g. `sk-ant-test`) into the API key field and save. Trigger a warning and click **Explain why**. The side panel shows the static fallback paragraph instead of a streamed explanation, because the backend used your bad key for that request and failed open. That confirms the header reached the backend. Clear the field and save to go back to the shared key, and the stream comes back.
 
 ## "Explain why" streaming
 
@@ -118,7 +138,7 @@ Reopening the side panel from the toolbar (without a fresh "Explain why" click) 
 
 ## What's not done yet
 
-- Settings page (whitelist, sensitivity slider, dev/prod backend switcher)
+- Viewing or clearing bypasses and the email safe-list from the settings page (DevTools only for now)
 - Real Watcher mascot art (currently a placeholder shield SVG)
 - Chrome Web Store listing
 - Production backend deployment

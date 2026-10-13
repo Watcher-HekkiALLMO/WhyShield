@@ -1,35 +1,26 @@
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
-import {
-  cacheKeyForEmail,
-  cacheKeyForUrl,
-  getCachedVerdict,
-  putCachedVerdict,
-} from "./cache";
+import { cacheKeyForEmail, cacheKeyForUrl, getCachedVerdict, putCachedVerdict } from "./cache";
 import { classifyWithClaude } from "./claude";
 import { classifyEmailWithClaude } from "./email-claude";
 import {
-  buildEmailUserMessage as buildExplainEmailUserMessage,
   FALLBACK_TEXT_EMAIL,
   SYSTEM_PROMPT_EMAIL,
+  buildEmailUserMessage as buildExplainEmailUserMessage,
   validateExplainEmailRequest,
 } from "./email-explain";
 import { runEmailHeuristics } from "./email-heuristics";
 import {
-  buildUserMessage as buildExplainUrlUserMessage,
   FALLBACK_TEXT,
-  streamExplanation,
   SYSTEM_PROMPT,
+  buildUserMessage as buildExplainUrlUserMessage,
+  streamExplanation,
   validateExplainRequest,
 } from "./explain";
 import { runHeuristics } from "./heuristics";
 import { normalizeUrl } from "./heuristics/normalize";
-import type {
-  AnalyzeEmailRequest,
-  AnalyzeResponse,
-  AnalyzeUrlRequest,
-} from "./types";
+import type { AnalyzeEmailRequest, AnalyzeResponse, AnalyzeUrlRequest } from "./types";
 
 interface Env {
   ANTHROPIC_API_KEY: string;
@@ -38,6 +29,18 @@ interface Env {
 
 const app = new Hono<{ Bindings: Env }>();
 
+// Bring-your-own-key. If the extension sends this header, the request's
+// Claude calls bill the user's own Anthropic account instead of ours.
+// The value is read once here and handed straight to the SDK client. It
+// is never logged, never cached, and never written to KV. If request
+// logging is ever added to this file, this header must be excluded.
+const API_KEY_HEADER = "X-WhyShield-API-Key";
+
+function apiKeyFor(c: Context<{ Bindings: Env }>): string {
+  const own = c.req.header(API_KEY_HEADER)?.trim();
+  return own ? own : c.env.ANTHROPIC_API_KEY;
+}
+
 // CORS for extension pages (the side panel) talking to this backend.
 // The extension's background worker bypasses CORS via host_permissions,
 // but extension pages still go through normal browser CORS. Reflect any
@@ -45,10 +48,9 @@ const app = new Hono<{ Bindings: Env }>();
 app.use(
   "*",
   cors({
-    origin: (origin) =>
-      origin && origin.startsWith("chrome-extension://") ? origin : "",
+    origin: (origin) => (origin && origin.startsWith("chrome-extension://") ? origin : ""),
     allowMethods: ["POST", "OPTIONS"],
-    allowHeaders: ["Content-Type"],
+    allowHeaders: ["Content-Type", API_KEY_HEADER],
   }),
 );
 
@@ -94,7 +96,7 @@ app.post("/analyze/url", async (c) => {
     url: normalized.raw,
     host: normalized.host,
     heuristicHints: heur.inconclusiveReasons,
-    apiKey: c.env.ANTHROPIC_API_KEY,
+    apiKey: apiKeyFor(c),
   });
   await putCachedVerdict(c.env.VERDICT_CACHE, cacheKey, claudeVerdict);
   return c.json(claudeVerdict);
@@ -124,7 +126,7 @@ app.post("/analyze/email", async (c) => {
   const claudeVerdict = await classifyEmailWithClaude({
     request: body,
     heuristicHints: heur.inconclusiveReasons,
-    apiKey: c.env.ANTHROPIC_API_KEY,
+    apiKey: apiKeyFor(c),
   });
   await putCachedVerdict(c.env.VERDICT_CACHE, cacheKey, claudeVerdict);
   return c.json(claudeVerdict);
@@ -138,7 +140,7 @@ app.post("/explain/url", async (c) => {
     return c.json({ error: "Required: { url, verdict, confidence, reasons[] }" }, 400);
   }
   return streamSSE(c, (stream) =>
-    streamExplanation(stream, c.env.ANTHROPIC_API_KEY, {
+    streamExplanation(stream, apiKeyFor(c), {
       system: SYSTEM_PROMPT,
       user: buildExplainUrlUserMessage(body),
       fallback: FALLBACK_TEXT,
@@ -156,7 +158,7 @@ app.post("/explain/email", async (c) => {
     );
   }
   return streamSSE(c, (stream) =>
-    streamExplanation(stream, c.env.ANTHROPIC_API_KEY, {
+    streamExplanation(stream, apiKeyFor(c), {
       system: SYSTEM_PROMPT_EMAIL,
       user: buildExplainEmailUserMessage(body),
       fallback: FALLBACK_TEXT_EMAIL,

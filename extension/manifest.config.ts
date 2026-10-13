@@ -39,6 +39,13 @@ export default defineManifest({
   side_panel: {
     default_path: "src/sidepanel/index.html",
   },
+  // open_in_tab rather than the embedded chrome://extensions popup: the
+  // page has a textarea and a password field, and the popup's fixed
+  // small viewport makes both awkward.
+  options_ui: {
+    page: "src/options/index.html",
+    open_in_tab: true,
+  },
   web_accessible_resources: [
     {
       // icon.svg is referenced by Chrome itself (toolbar action, icons),

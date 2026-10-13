@@ -24,6 +24,7 @@ export default defineConfig({
       input: {
         warning: resolve(here, "src/warning/index.html"),
         sidepanel: resolve(here, "src/sidepanel/index.html"),
+        options: resolve(here, "src/options/index.html"),
       },
     },
   },

@@ -150,6 +150,47 @@ Stack:
   every link in every email would look like `google.com` to the
   typosquat detector and we'd never flag anything.
 
+### Settings
+- One helper, `getSettings()` in `extension/src/shared/settings.ts`,
+  merges stored values over the defaults in `config.ts` and returns a
+  typed `Settings`. Every consumer (background worker, Gmail content
+  script, side panel, options page) calls it; nothing reads
+  `chrome.storage` for these keys directly. Each stored field is
+  type-checked and falls back to its default, and sensitivity is clamped
+  to 0.5–0.9, so a malformed value can never crash a consumer.
+- Settings are read **per event** (per navigation, per Gmail observer
+  tick, per explain request), not once at startup, so a change on the
+  options page applies on the next page load or email opened without
+  reloading the extension.
+- Storage split: backend URL, sensitivity, trusted hosts, and the two
+  toggles live in `chrome.storage.sync`. The bring-your-own API key
+  lives in `chrome.storage.local` only. Secrets must not ride Chrome
+  Sync onto other devices or Google's servers.
+- Trusted hosts are an **exact host match, lowercase, port kept**. No
+  subdomain inheritance, same rule as the Continue-anyway bypass list.
+  A trusted host skips analysis entirely: no cache lookup, no backend
+  call, so the host never leaves the machine. **URL-only by decision**:
+  sender addresses are spoofable, so trusting a host on the email side
+  would open a hole exactly where phishing lives. The link-typosquat
+  heuristic already leaves exact-match links to real brands alone.
+- All backend requests go through `postToBackend()` in
+  `extension/src/shared/backend.ts`, which resolves the user's backend
+  URL and attaches `X-WhyShield-API-Key` when a key is set. The backend
+  (`apiKeyFor()` in `/backend/src/index.ts`) uses that key for the
+  request's Claude calls instead of its own, never logs it, never caches
+  it. The header must stay in the backend's CORS `allowHeaders` or the
+  side panel's preflight fails (the background worker bypasses CORS via
+  host_permissions; extension pages don't).
+- Options page is `options_ui` with `open_in_tab: true`. The save is
+  all-or-nothing: an invalid backend URL or an unparseable trusted-host
+  line blocks the whole save with an inline message. Lines are parsed as
+  URLs so a pasted `https://PayPal.com/login` saves as `paypal.com`.
+  Reset to defaults also clears the API key.
+- Email-warnings toggle: off at bootstrap means the Gmail observer is
+  never attached. A `chrome.storage.onChanged` listener starts it if the
+  user turns the setting on with Gmail open. Turning it off mid-session
+  is honored on the next observer tick.
+
 ## Known v2 priorities
 
 These are deliberate post-v1 items captured here so future sessions don't
@@ -195,14 +236,15 @@ When this lands, re-tune the verdict-badge palette holistically — the
 saturated red on the malicious badge is currently the only deep red in
 the product and may want to soften.
 
-### Settings page
-- Per-user whitelist of trusted hosts.
-- Sensitivity slider (lower threshold = more warnings; higher = fewer).
-- Dev/prod backend switcher (chrome.storage.local override of
-  BACKEND_URL).
-- Bring-your-own-key (BYOK) — power users paste their own Anthropic API
-  key, their usage bills their account, raises their effective rate
-  limit.
+### Settings page (shipped in session 6; leftovers)
+Whitelist, sensitivity slider, backend URL override, and BYOK all
+landed. Still open:
+- BYOK does not yet raise the user's effective rate limit, because
+  per-install rate limiting itself isn't implemented (see Production
+  deploy). When it is, requests carrying a user key should be exempt.
+- No way to view or clear the 1-hour Continue-anyway bypasses or the
+  per-message email safe-list from the options page. Today that's a
+  DevTools trip (documented in extension/README.md).
 
 ### Production deploy
 - Cloudflare Workers deploy (currently localhost-only).

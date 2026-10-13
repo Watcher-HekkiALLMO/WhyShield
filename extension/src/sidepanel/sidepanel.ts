@@ -1,9 +1,5 @@
-import {
-  BACKEND_URL,
-  EXPLAIN_CONTEXT_KEY_PREFIX,
-  EXPLAIN_EMAIL_PATH,
-  EXPLAIN_URL_PATH,
-} from "../shared/config";
+import { postToBackend } from "../shared/backend";
+import { EXPLAIN_CONTEXT_KEY_PREFIX, EXPLAIN_EMAIL_PATH, EXPLAIN_URL_PATH } from "../shared/config";
 import type { ExplainContext } from "../shared/types";
 
 type State = "opening" | "streaming" | "complete" | "error" | "no-data";
@@ -129,12 +125,10 @@ async function startStream(ctx: ExplainContext): Promise<void> {
   const path = ctx.type === "email" ? EXPLAIN_EMAIL_PATH : EXPLAIN_URL_PATH;
 
   try {
-    const res = await fetch(`${BACKEND_URL}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(ctx),
-      signal: currentAbort.signal,
-    });
+    // postToBackend resolves the user's backend URL and BYOK header from
+    // settings; this page runs under normal CORS, which is why the
+    // backend's allowHeaders must list the key header.
+    const res = await postToBackend(path, ctx, currentAbort.signal);
     if (!res.ok || !res.body) {
       throw new Error(`backend returned ${res.status}`);
     }

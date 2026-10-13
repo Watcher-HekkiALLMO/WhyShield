@@ -1,13 +1,6 @@
-import {
-  EXPLAIN_CONTEXT_KEY_PREFIX,
-  SUSPICIOUS_INTERSTITIAL_THRESHOLD,
-  WARNING_PAGE_PATH,
-} from "../shared/config";
-import type {
-  AnalyzeEmailRequest,
-  AnalyzeResponse,
-  ExplainContext,
-} from "../shared/types";
+import { EXPLAIN_CONTEXT_KEY_PREFIX, WARNING_PAGE_PATH } from "../shared/config";
+import { getSettings, isTrustedHost } from "../shared/settings";
+import type { AnalyzeEmailRequest, AnalyzeResponse, ExplainContext } from "../shared/types";
 import { analyzeEmail, analyzeUrl } from "./api";
 import {
   bypassHost,
@@ -29,9 +22,11 @@ function shouldSkip(rawUrl: string): boolean {
   return SKIPPED_SCHEMES.some((s) => rawUrl.startsWith(s));
 }
 
-function shouldInterstitial(v: AnalyzeResponse): boolean {
+// Malicious always warns. Suspicious warns only at or above the user's
+// sensitivity threshold — that's the knob on the settings page.
+function shouldInterstitial(v: AnalyzeResponse, threshold: number): boolean {
   if (v.verdict === "malicious") return true;
-  if (v.verdict === "suspicious" && v.confidence >= SUSPICIOUS_INTERSTITIAL_THRESHOLD) return true;
+  if (v.verdict === "suspicious" && v.confidence >= threshold) return true;
   return false;
 }
 
@@ -61,6 +56,14 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
     return;
   }
 
+  // Settings are read per navigation (not cached at startup) so a change
+  // on the options page takes effect on the very next page load without
+  // reloading the extension.
+  const settings = await getSettings();
+  if (!settings.urlWarnings) return;
+  // Trusted hosts skip analysis entirely: no cache lookup, no backend
+  // call. The host never leaves the machine.
+  if (isTrustedHost(parsed.host, settings)) return;
   if (await isHostBypassed(parsed.host)) return;
 
   let verdict = await getCachedVerdict(parsed);
@@ -70,7 +73,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
     await putCachedVerdict(parsed, verdict);
   }
 
-  if (!shouldInterstitial(verdict)) return;
+  if (!shouldInterstitial(verdict, settings.sensitivity)) return;
 
   await chrome.tabs.update(details.tabId, { url: buildWarningUrl(details.url, verdict) });
 });

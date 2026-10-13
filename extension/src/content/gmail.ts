@@ -21,12 +21,8 @@
 // are out of scope. Inbox, All Mail, search results, labels, spam, trash
 // are all analyzed.
 
-import { SUSPICIOUS_INTERSTITIAL_THRESHOLD } from "../shared/config";
-import type {
-  AnalyzeEmailRequest,
-  AnalyzeResponse,
-  ExplainEmailContext,
-} from "../shared/types";
+import { getSettings } from "../shared/settings";
+import type { AnalyzeEmailRequest, AnalyzeResponse, ExplainEmailContext } from "../shared/types";
 import { findBanner, injectBanner, removeBanner } from "./banner";
 import {
   extractBody,
@@ -54,13 +50,11 @@ function inSkippedFolder(): boolean {
   return SKIPPED_FOLDERS.has(m?.[1] ?? "");
 }
 
-function shouldShowBanner(verdict: AnalyzeResponse): boolean {
+// Same rule as the URL interstitial: malicious always, suspicious only at
+// or above the user's sensitivity threshold.
+function shouldShowBanner(verdict: AnalyzeResponse, threshold: number): boolean {
   if (verdict.verdict === "malicious") return true;
-  if (
-    verdict.verdict === "suspicious" &&
-    verdict.confidence >= SUSPICIOUS_INTERSTITIAL_THRESHOLD
-  )
-    return true;
+  if (verdict.verdict === "suspicious" && verdict.confidence >= threshold) return true;
   return false;
 }
 
@@ -70,9 +64,7 @@ function shouldShowBanner(verdict: AnalyzeResponse): boolean {
 // have offsetHeight === 0). If the user expands an older message, that
 // becomes the latest expanded one and we re-analyze.
 function findLatestExpandedMessage(): HTMLElement | null {
-  const messages = document.querySelectorAll<HTMLElement>(
-    "[role='main'] [data-message-id]",
-  );
+  const messages = document.querySelectorAll<HTMLElement>("[role='main'] [data-message-id]");
   let latest: HTMLElement | null = null;
   for (const msg of messages) {
     const body = msg.querySelector<HTMLElement>(".a3s");
@@ -87,6 +79,12 @@ async function processCurrentMessage(): Promise<void> {
 
   processing = true;
   try {
+    // Read per tick, not once at bootstrap, so a sensitivity change or
+    // switching email warnings off applies to the next message opened
+    // without reloading Gmail.
+    const settings = await getSettings();
+    if (!settings.emailWarnings) return;
+
     const msgEl = findLatestExpandedMessage();
     if (!msgEl) return;
 
@@ -110,14 +108,11 @@ async function processCurrentMessage(): Promise<void> {
       type: "analyze-email",
       messageId,
       payload,
-    })) as
-      | { skipped: true }
-      | { verdict: AnalyzeResponse }
-      | { verdict: null };
+    })) as { skipped: true } | { verdict: AnalyzeResponse } | { verdict: null };
 
     if ("skipped" in result) return; // safe-listed
     if (!result.verdict) return; // backend unreachable: fail open
-    if (!shouldShowBanner(result.verdict)) return;
+    if (!shouldShowBanner(result.verdict, settings.sensitivity)) return;
 
     // Gmail may have re-rendered while we awaited — make sure our
     // message div is still in the DOM before injecting.
@@ -197,10 +192,7 @@ async function onExplainClick(
 // MutationObserver will fire on the removal, processCurrentMessage will
 // re-run, and the backend's pre-check will return { skipped: true } —
 // no re-injection.
-async function onMarkSafeClick(
-  messageId: string,
-  msgEl: HTMLElement,
-): Promise<void> {
+async function onMarkSafeClick(messageId: string, msgEl: HTMLElement): Promise<void> {
   await chrome.runtime.sendMessage({ type: "mark-email-safe", messageId });
   const host = findBanner(msgEl, messageId);
   if (host) removeBanner(host);
@@ -214,7 +206,14 @@ function onDismissClick(messageId: string, msgEl: HTMLElement): void {
   if (host) removeBanner(host);
 }
 
-async function bootstrap(): Promise<void> {
+// Guard so the observer is attached at most once per content-script
+// lifetime, even if the user toggles email warnings off and on.
+let observing = false;
+
+async function startObserving(): Promise<void> {
+  if (observing) return;
+  observing = true;
+
   const main = await waitForMain();
 
   // One observer for the lifetime of the content script. childList +
@@ -232,6 +231,21 @@ async function bootstrap(): Promise<void> {
 
   // Initial pass for the message that may already be open.
   scheduleProcess();
+}
+
+async function bootstrap(): Promise<void> {
+  // Email warnings off → don't attach the observer at all, so a disabled
+  // WhyShield costs Gmail nothing. If the user turns the setting on while
+  // this tab is open, the storage listener below starts the observer
+  // without needing a reload. Turning it off mid-session is handled per
+  // tick inside processCurrentMessage.
+  const settings = await getSettings();
+  if (settings.emailWarnings) void startObserving();
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "sync") return;
+    if (changes.emailWarnings?.newValue === true) void startObserving();
+  });
 }
 
 void bootstrap();
