@@ -39,21 +39,14 @@ interface ClaudeOutput {
   explanation: string;
 }
 
-export function buildEmailUserMessage(
-  request: AnalyzeEmailRequest,
-  hints: Reason[],
-): string {
+export function buildEmailUserMessage(request: AnalyzeEmailRequest, hints: Reason[]): string {
   const hintLines =
     hints.length === 0
       ? "(no heuristic signals fired)"
-      : hints
-          .map((r) => `- ${r.code}${r.detail ? `: ${r.detail}` : ""}`)
-          .join("\n");
+      : hints.map((r) => `- ${r.code}${r.detail ? `: ${r.detail}` : ""}`).join("\n");
 
   const linkLines =
-    request.links.length === 0
-      ? "(none)"
-      : request.links.map((l) => `- ${l}`).join("\n");
+    request.links.length === 0 ? "(none)" : request.links.map((l) => `- ${l}`).join("\n");
 
   const bodyPreview =
     request.body.length > MAX_BODY_CHARS
@@ -76,9 +69,7 @@ ${hintLines}
 Respond with the JSON object described in your instructions.`;
 }
 
-export async function classifyEmailWithClaude(
-  input: ClaudeEmailInput,
-): Promise<AnalyzeResponse> {
+export async function classifyEmailWithClaude(input: ClaudeEmailInput): Promise<AnalyzeResponse> {
   const client = new Anthropic({ apiKey: input.apiKey });
 
   const message = await client.messages.create({

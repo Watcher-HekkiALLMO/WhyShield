@@ -27,9 +27,7 @@ export function injectBanner(
 ): HTMLElement | null {
   // Replace any existing banner for this message — handles re-analysis
   // cleanly without piling up DOM nodes.
-  const existing = msgEl.querySelector<HTMLElement>(
-    `[${BANNER_ATTR}="${CSS.escape(messageId)}"]`,
-  );
+  const existing = msgEl.querySelector<HTMLElement>(`[${BANNER_ATTR}="${CSS.escape(messageId)}"]`);
   if (existing) existing.remove();
 
   const bodyEl = msgEl.querySelector<HTMLElement>(".a3s");
@@ -55,13 +53,8 @@ export function removeBanner(host: HTMLElement): void {
 
 // Find any banner node currently injected for this message. Used by the
 // dismiss path so we don't have to track host references in caller code.
-export function findBanner(
-  msgEl: Element,
-  messageId: string,
-): HTMLElement | null {
-  return msgEl.querySelector<HTMLElement>(
-    `[${BANNER_ATTR}="${CSS.escape(messageId)}"]`,
-  );
+export function findBanner(msgEl: Element, messageId: string): HTMLElement | null {
+  return msgEl.querySelector<HTMLElement>(`[${BANNER_ATTR}="${CSS.escape(messageId)}"]`);
 }
 
 // ---------- internals ----------
@@ -134,11 +127,7 @@ function headlineFor(reasons: Reason[]): string {
   ) {
     return "This email shows signs of a phishing message";
   }
-  if (
-    codes.has("auth-spf-fail") ||
-    codes.has("auth-dkim-fail") ||
-    codes.has("auth-dmarc-fail")
-  ) {
+  if (codes.has("auth-spf-fail") || codes.has("auth-dkim-fail") || codes.has("auth-dmarc-fail")) {
     return "This email's sender details don't add up";
   }
   return "This email might not be what it claims";

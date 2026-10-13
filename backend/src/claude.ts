@@ -38,9 +38,7 @@ function buildUserMessage(input: ClaudeInput): string {
   const hints =
     input.heuristicHints.length === 0
       ? "(no heuristic signals fired)"
-      : input.heuristicHints
-          .map((r) => `- ${r.code}${r.detail ? `: ${r.detail}` : ""}`)
-          .join("\n");
+      : input.heuristicHints.map((r) => `- ${r.code}${r.detail ? `: ${r.detail}` : ""}`).join("\n");
   return `URL: ${input.url}
 Host: ${input.host}
 

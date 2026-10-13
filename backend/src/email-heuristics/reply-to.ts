@@ -1,5 +1,5 @@
 import type { Reason } from "../types";
-import { parseFromHeader, type ParsedFrom } from "./parse-from";
+import { type ParsedFrom, parseFromHeader } from "./parse-from";
 
 // Reply-To pointing to a different domain than From is a classic phishing
 // pattern: the message looks like it came from support@bigbrand.com but

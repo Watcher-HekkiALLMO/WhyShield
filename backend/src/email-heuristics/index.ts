@@ -1,4 +1,4 @@
-import { URGENCY_KEYWORDS, CREDENTIAL_REQUEST_KEYWORDS } from "../email-keywords";
+import { CREDENTIAL_REQUEST_KEYWORDS, URGENCY_KEYWORDS } from "../email-keywords";
 import type { AnalyzeEmailRequest, AnalyzeResponse, Reason } from "../types";
 import { detectAuthFailures } from "./auth-hints";
 import { detectDisplayMismatch } from "./display-mismatch";
@@ -98,10 +98,7 @@ export function runEmailHeuristics(input: AnalyzeEmailRequest): EmailHeuristicVe
   return finishInconclusive(input, inconclusive);
 }
 
-function finishInconclusive(
-  _input: AnalyzeEmailRequest,
-  reasons: Reason[],
-): EmailHeuristicVerdict {
+function finishInconclusive(_input: AnalyzeEmailRequest, reasons: Reason[]): EmailHeuristicVerdict {
   return { conclusive: false, response: null, inconclusiveReasons: reasons };
 }
 

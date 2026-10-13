@@ -47,15 +47,7 @@ function stripWww(host: string): string {
 // public-suffix list. Take the last two labels for most TLDs, last three
 // for the multi-part TLDs we explicitly know about. Brand list uses the
 // same shape so they match.
-const MULTI_PART_TLDS = new Set([
-  "co.uk",
-  "co.jp",
-  "co.kr",
-  "co.in",
-  "com.au",
-  "com.br",
-  "com.mx",
-]);
+const MULTI_PART_TLDS = new Set(["co.uk", "co.jp", "co.kr", "co.in", "com.au", "com.br", "com.mx"]);
 
 function registrableDomain(host: string): string {
   const parts = host.split(".");

@@ -56,9 +56,7 @@ export function analyzeLinks(links: readonly string[]): LinkAnalysisResult {
 
 function emailifyReason(r: Reason, link: string): Reason {
   const code = emailifyReasonCode(r.code);
-  const detail = r.detail
-    ? `${r.detail} (in link: ${link})`
-    : `(in link: ${link})`;
+  const detail = r.detail ? `${r.detail} (in link: ${link})` : `(in link: ${link})`;
   return { code, detail };
 }
 

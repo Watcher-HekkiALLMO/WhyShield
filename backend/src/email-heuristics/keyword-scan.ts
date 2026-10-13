@@ -9,10 +9,7 @@ export interface KeywordHit {
   matched: string[];
 }
 
-export function scanKeywords(
-  text: string,
-  keywords: readonly string[],
-): KeywordHit | null {
+export function scanKeywords(text: string, keywords: readonly string[]): KeywordHit | null {
   if (text.length === 0) return null;
   const haystack = text.toLowerCase();
   const matched: string[] = [];

@@ -21,10 +21,7 @@
 // Captured in CLAUDE.md "Known v2 priorities" if not already.
 
 export function extractMessageId(msgEl: Element): string | null {
-  return (
-    msgEl.getAttribute("data-legacy-message-id") ||
-    msgEl.getAttribute("data-message-id")
-  );
+  return msgEl.getAttribute("data-legacy-message-id") || msgEl.getAttribute("data-message-id");
 }
 
 // "Display Name <addr@host>" or just "addr@host" if no display name. The
@@ -34,9 +31,7 @@ export function extractSender(msgEl: Element): string | null {
   if (!span) return null;
   const email = (span.getAttribute("email") || "").trim();
   if (!email) return null;
-  const name =
-    (span.getAttribute("name") || "").trim() ||
-    (span.textContent || "").trim();
+  const name = (span.getAttribute("name") || "").trim() || (span.textContent || "").trim();
   return name && name !== email ? `${name} <${email}>` : email;
 }
 
@@ -82,9 +77,7 @@ export function extractLinks(msgEl: Element): string[] {
 
 function stripQuotes(body: Element): Element {
   const clone = body.cloneNode(true) as Element;
-  for (const q of clone.querySelectorAll(
-    ".gmail_quote, blockquote.gmail_quote, .gmail_extra",
-  )) {
+  for (const q of clone.querySelectorAll(".gmail_quote, blockquote.gmail_quote, .gmail_extra")) {
     q.remove();
   }
   return clone;

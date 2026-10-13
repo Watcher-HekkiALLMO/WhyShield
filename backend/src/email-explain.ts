@@ -40,14 +40,10 @@ export function buildEmailUserMessage(input: ExplainEmailRequest): string {
   const reasonLines =
     input.reasons.length === 0
       ? "(none)"
-      : input.reasons
-          .map((r) => `- ${r.code}${r.detail ? `: ${r.detail}` : ""}`)
-          .join("\n");
+      : input.reasons.map((r) => `- ${r.code}${r.detail ? `: ${r.detail}` : ""}`).join("\n");
 
   const linkLines =
-    input.links.length === 0
-      ? "(none)"
-      : input.links.map((l) => `- ${l}`).join("\n");
+    input.links.length === 0 ? "(none)" : input.links.map((l) => `- ${l}`).join("\n");
 
   const bodyPreview =
     input.body.length > MAX_BODY_CHARS
@@ -86,7 +82,10 @@ export function validateExplainEmailRequest(body: unknown): ExplainEmailRequest 
   if (typeof b.verdict !== "string") return null;
   if (typeof b.confidence !== "number") return null;
   if (!Array.isArray(b.reasons)) return null;
-  if (b.headerHints !== undefined && (typeof b.headerHints !== "object" || b.headerHints === null)) {
+  if (
+    b.headerHints !== undefined &&
+    (typeof b.headerHints !== "object" || b.headerHints === null)
+  ) {
     return null;
   }
 

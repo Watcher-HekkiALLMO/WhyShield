@@ -4,25 +4,25 @@
 // it covers the most-abused Cyrillic and Greek lookalikes.
 const HOMOGLYPH_MAP: Record<string, string> = {
   // Cyrillic → Latin
-  "а": "a",
-  "е": "e",
-  "о": "o",
-  "р": "p",
-  "с": "c",
-  "у": "y",
-  "х": "x",
-  "ѕ": "s",
-  "і": "i",
-  "ј": "j",
-  "ԁ": "d",
-  "ӏ": "l",
+  а: "a",
+  е: "e",
+  о: "o",
+  р: "p",
+  с: "c",
+  у: "y",
+  х: "x",
+  ѕ: "s",
+  і: "i",
+  ј: "j",
+  ԁ: "d",
+  ӏ: "l",
   // Greek → Latin
-  "α": "a",
-  "ο": "o",
-  "ρ": "p",
-  "ν": "v",
-  "ι": "i",
-  "ε": "e",
+  α: "a",
+  ο: "o",
+  ρ: "p",
+  ν: "v",
+  ι: "i",
+  ε: "e",
 };
 
 export interface NormalizedUrl {

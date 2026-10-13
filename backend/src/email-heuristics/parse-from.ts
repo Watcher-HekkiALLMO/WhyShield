@@ -24,9 +24,7 @@ export function parseFromHeader(raw: string): ParsedFrom | null {
   if (trimmed.length === 0) return null;
 
   // Forms 2-4: anything ending in `<...>`.
-  const angleMatch = trimmed.match(
-    /^(?:"([^"]*)"|([^<]*?))?\s*<\s*([^>\s]+)\s*>$/,
-  );
+  const angleMatch = trimmed.match(/^(?:"([^"]*)"|([^<]*?))?\s*<\s*([^>\s]+)\s*>$/);
   if (angleMatch) {
     const display = (angleMatch[1] ?? angleMatch[2] ?? "").trim();
     const email = angleMatch[3]!.toLowerCase();
