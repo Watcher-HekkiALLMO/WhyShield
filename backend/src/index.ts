@@ -56,8 +56,15 @@ function apiKeyFor(c: Context<{ Bindings: Env }>): ResolvedKey {
 // hide the problem from them.
 const BYOK_REJECTED_BODY = { error: "byok-rejected" } as const;
 
+// 401 = key not recognized (mistyped). 403 = key recognized but not
+// allowed (disabled, or restricted from this model). Both mean the user
+// has to fix their key, so both get the same notice. A 400 for an empty
+// credit balance is deliberately NOT here: the key is fine, the account
+// isn't, and that needs different wording when we add it.
 function isAnthropicAuthError(e: unknown): boolean {
-  return typeof e === "object" && e !== null && (e as { status?: unknown }).status === 401;
+  if (typeof e !== "object" || e === null) return false;
+  const status = (e as { status?: unknown }).status;
+  return status === 401 || status === 403;
 }
 
 // CORS for extension pages (the side panel) talking to this backend.
