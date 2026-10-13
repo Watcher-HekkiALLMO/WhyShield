@@ -81,9 +81,10 @@ function editDistance(a: string, b: string): number {
 function renderSourceUrl(el: HTMLElement, url: string, reasons: Reason[]): void {
   el.textContent = "";
   const top = reasons[0];
-  // `reasons` comes from the query string with no shape check and this
-  // page is web-accessible, so detail must be verified as a string before
-  // it's used; a bad shape falls back to the plain URL, not a crash.
+  // `reasons` comes from the query string with no shape check. Only the
+  // extension itself opens this page (no web_accessible_resources entry
+  // since session 8b), but detail is still verified as a string before
+  // use; a bad shape falls back to the plain URL, not a crash.
   const brandLabel =
     top?.code === "typosquat-of-brand" && typeof top.detail === "string"
       ? top.detail.split(".")[0]

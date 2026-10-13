@@ -21,6 +21,7 @@ import {
 } from "./explain";
 import { runHeuristics } from "./heuristics";
 import { normalizeUrl } from "./heuristics/normalize";
+import { ABOUT_HTML, PRIVACY_HTML } from "./pages";
 import {
   ANALYZE_LIMIT_PER_HOUR,
   EXPLAIN_LIMIT_PER_HOUR,
@@ -73,14 +74,14 @@ function isAnthropicAuthError(e: unknown): boolean {
   return status === 401 || status === 403;
 }
 
-// CORS for extension pages (the side panel) talking to this backend.
-// The extension's background worker bypasses CORS via host_permissions,
-// but extension pages still go through normal browser CORS. Reflect any
+// CORS for the extension talking to this backend. The extension has no
+// host permissions (session 8b), so the service worker, the side panel,
+// and the options page all go through normal browser CORS. Reflect any
 // chrome-extension origin since the dev/prod IDs differ.
 app.use(
   "*",
   cors({
-    origin: (origin) => (origin && origin.startsWith("chrome-extension://") ? origin : ""),
+    origin: (origin) => (origin?.startsWith("chrome-extension://") ? origin : ""),
     allowMethods: ["POST", "OPTIONS"],
     allowHeaders: ["Content-Type", API_KEY_HEADER, INSTALL_HEADER],
   }),
@@ -94,6 +95,12 @@ app.use("/analyze/*", rateLimit<{ Bindings: Env }>("analyze", ANALYZE_LIMIT_PER_
 app.use("/explain/*", rateLimit<{ Bindings: Env }>("explain", EXPLAIN_LIMIT_PER_HOUR));
 
 app.get("/", (c) => c.text("WhyShield backend OK"));
+
+// Legal pages. Static HTML, no JS, served here so the Web Store listing
+// has a live https privacy-policy URL. Not rate limited (GET, and the
+// limiter only counts POST) and not behind CORS checks (plain navigation).
+app.get("/privacy", (c) => c.html(PRIVACY_HTML));
+app.get("/about", (c) => c.html(ABOUT_HTML));
 
 app.post("/analyze/url", async (c) => {
   let body: AnalyzeUrlRequest;

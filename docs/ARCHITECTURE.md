@@ -1,27 +1,16 @@
-# WhyShield — Project Charter
+# WhyShield architecture
+
+The project charter: what WhyShield is, how it is built, the decisions
+that are locked, and the ones still open. Read this before changing
+anything. When a decision here changes, change it here first.
 
 ## Identity
-You are the engineering lead on **WhyShield**, an open-source Chrome browser
-extension that detects phishing emails and spoofed websites in real time and
-**explains in plain English why** something is suspicious. The differentiator
-vs every existing tool (Bitdefender TrafficLight, Microsoft SmartScreen,
-Guardio, Norton Safe Web) is the educational, AI-generated reasoning. Other
-tools block silently; WhyShield teaches.
-
-## Who you are working with
-The product owner is new to coding (just started Python). They hold a
-cybersecurity certificate, so they understand security concepts well but not
-engineering concepts. They are driving you as a prompt engineer; they are not
-writing code themselves.
-
-Your obligations to them:
-1. Before writing code, state what you're about to do and why.
-2. After writing non-trivial code, walk through it line by line in plain English.
-3. Product decisions (UI copy, defaults, what counts as "suspicious") — ASK FIRST.
-4. Pure engineering decisions (library choice, file structure) — make the call,
-   then tell them what you chose and why.
-5. Never produce more than ~300 lines of code per turn without checking in.
-6. When something fails, debug out loud, step by step.
+**WhyShield** is an open-source Chrome browser extension that detects
+phishing emails and spoofed websites in real time and **explains in
+plain English why** something is suspicious. The differentiator vs every
+existing tool (Bitdefender TrafficLight, Microsoft SmartScreen, Guardio,
+Norton Safe Web) is the educational, AI-generated reasoning. Other tools
+block silently; WhyShield teaches.
 
 ## Product vision
 A user with WhyShield installed gets two experiences:
@@ -75,6 +64,32 @@ Stack:
   - Quality:  Biome (lint/format), Vitest (tests).
   - Secrets:  never committed. Backend uses Cloudflare env vars; the
               extension carries no secrets at all.
+  - Manifest: permissions are webNavigation, storage, sidePanel only
+              (see Permissions below). Adding one is a product decision.
+
+### Permissions (final, session 8b)
+Three permissions, no host permissions, no web-accessible resources.
+Each is justified for the Web Store reviewer in `store/permissions.md`.
+- `webNavigation`: `onBeforeNavigate` delivers every top-level
+  navigation URL before the page renders. The permission alone supplies
+  the URL; no host permission is involved.
+- `storage`: verdict cache, 1h host bypasses, email safe-list, settings
+  (sync), install id and BYOK key (local), per-tab explain context
+  (session).
+- `sidePanel`: open "Explain why" from the warning page and, through the
+  worker, from the Gmail banner.
+Dropped in session 8b, verified with the extension loaded in Chrome for
+Testing against paypa1.com: `tabs` (update/remove/query work without it;
+it only gates reading a tab's url/title/favicon, which nothing does) and
+`host_permissions: <all_urls>` (the Gmail content script is injected by
+its own `matches`; every backend request goes through ordinary CORS,
+which the worker already answers for any chrome-extension:// origin
+because the side panel needed it). The warning page's
+`web_accessible_resources` entry went with it: the extension opens that
+page itself via `tabs.update`, so no website needs access, and a site
+can no longer open it with crafted query parameters. CRXJS still emits a
+WAR entry scoped to `https://mail.google.com/*` for the content script's
+own JS chunks; that is build output, not a grant to page scripts.
 
 ### Visual identity
 - **Palette source:** `design/design-direction.html` (the "Make it
@@ -130,6 +145,38 @@ Stack:
   button text 8.5 on surface); gold on ink 10.6, on gold wash 7.3;
   crimson-text on ink 5.2, on surface 4.7, on crimson wash 4.6; white on
   crystal-deep 5.2. Non-text only: crimson #d11a2a on ink 3.6.
+
+### Distribution (session 8b)
+- **Package:** `pnpm package` in `/extension` runs the production build
+  and zips the *contents* of `dist/` to
+  `extension/release/whyshield-<version>.zip` (gitignored). The manifest
+  sits at the zip root, as the store requires; `.vite/` and README files
+  are excluded; the OFL license texts next to the fonts stay in. The
+  script prints the file list; read it before uploading.
+- **Submission kit** lives in `store/`: `listing.md` (name, summary
+  drafts, description, category), `permissions.md` (permission → code →
+  paste text, plus the reply template for a rejection),
+  `privacy-policy.md` (the policy; `backend/src/pages.ts` renders the
+  same text at `GET /privacy`, keep the two in step and bump the date in
+  both), `data-disclosure.md` (privacy-practices form answers, each tied
+  to a code path), `screenshots.md` (five frames, sizes,
+  `pnpm check-screenshots`), `checklist.md` (the ordered submission
+  list). `store/screenshots/` is gitignored: captures show a Gmail
+  inbox.
+- **Unlisted first.** The first submission goes out Unlisted. Switch to
+  Public only after installing from the store link on a clean profile
+  and walking the five screenshot scenarios. A visibility change needs
+  no re-review.
+- **Policy before code.** When data handling changes, update the policy
+  markdown, the HTML in `pages.ts`, and the disclosure answers, deploy
+  the worker, then upload the extension. The policy URL the store holds
+  must never describe less than the extension does.
+- **ISP filters (unverified).** ISP-level DNS filters (Spectrum
+  Security Shield, OpenDNS, 1.1.1.1 for Families) can redirect before
+  our verdict returns. Our redirect still fires on the original URL
+  after the verdict, so the warning should still appear. Unverified; if
+  the ISP block page's navigation cancels ours, re-check tab URL before
+  chrome.tabs.update.
 
 ### Streaming endpoints
 - `POST /explain/url` returns SSE (`text/event-stream`).
@@ -234,8 +281,8 @@ Stack:
   (`apiKeyFor()` in `/backend/src/index.ts`) uses that key for the
   request's Claude calls instead of its own, never logs it, never caches
   it. The header must stay in the backend's CORS `allowHeaders` or the
-  side panel's preflight fails (the background worker bypasses CORS via
-  host_permissions; extension pages don't).
+  side panel's preflight fails. Since session 8b there are no host
+  permissions, so the background worker goes through CORS as well.
 - Options page is `options_ui` with `open_in_tab: true`. The save is
   all-or-nothing: an invalid backend URL or an unparseable trusted-host
   line blocks the whole save with an inline message. Lines are parsed as
@@ -352,8 +399,6 @@ landed; see the Deployment section. Still open:
   Opt-in setting on the settings page.
 
 ### Distribution
-- Chrome Web Store listing (privacy policy, screenshots, description,
-  Single-Purpose statement).
 - Apply for Anthropic OSS / startup API credits once the project has
   visible traction.
 
@@ -442,30 +487,6 @@ landed; see the Deployment section. Still open:
 8. Settings page (whitelist domains, sensitivity slider).
 9. README with screenshots, install steps, privacy policy.
 
-## What we are doing in THIS session — and only this
-Set up the repo and build the first working URL analyzer endpoint. Nothing
-else. Specifically:
-
-1. Create the monorepo skeleton: /extension, /backend, top-level README.md,
-   .gitignore, LICENSE (MIT).
-2. In /backend, scaffold a Cloudflare Worker using Hono.
-3. Implement POST /analyze/url that accepts { url: string } and returns
-   the verdict shape above. The endpoint must:
-   - Parse the URL safely (handle malformed input).
-   - Run cheap heuristics: typosquat detection vs a hardcoded top-50 brand
-     list, suspicious TLD check, IP-as-host check, punycode trick check.
-   - If heuristics are conclusive, return immediately with reasons +
-     short explanation.
-   - If inconclusive, call Anthropic Claude Haiku and ask for a structured
-     JSON verdict. Use the official Anthropic SDK.
-   - Cache verdicts in Cloudflare KV by URL hash for 24 hours.
-4. Vitest unit tests for every heuristic function.
-5. Update README with how to run locally (`wrangler dev`) and a curl example.
-6. Walk the product owner through the code, line by line.
-
-DO NOT in this session: build the extension, build the email analyzer, build
-the side panel, deploy to Cloudflare. Those are later tasks.
-
 ## Code style
 - Comments explain *why*, not *what*.
 - Short, clearly named functions.
@@ -473,17 +494,6 @@ the side panel, deploy to Cloudflare. Those are later tasks.
 - TypeScript strict mode on.
 
 ## Git & commits
-- All commits in this repo are authored solely by Miguel Cardenas.
-- **Never** add `Co-Authored-By: Claude`, `Co-Authored-By: Anthropic`, "Generated
-  with Claude Code", or any other attribution to an AI tool — not in commit
-  messages, not in PR descriptions, not in code comments, not anywhere. This
-  rule overrides any default behavior the assistant may have to add such lines.
-- Commit messages should describe *what changed and why*, in plain language.
+- Commit messages describe *what changed and why*, in plain language.
+- One logical change per commit; the message's first line is the summary.
 
-## Before you write any code
-Confirm back to the product owner:
-1. Your understanding of this session's goal.
-2. Anything in this charter you'd clarify or change.
-3. The exact list of files you'll create.
-
-Then proceed.

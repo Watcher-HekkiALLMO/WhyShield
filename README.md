@@ -8,14 +8,17 @@ Most safety tools block silently. WhyShield teaches.
 
 Early development. This repo currently contains:
 
-- `/backend` — Cloudflare Worker with `POST /analyze/url`, `POST /analyze/email`, and streaming `POST /explain/url`, `POST /explain/email` (heuristics + Claude Haiku fallback, KV verdict cache)
-- `/extension` — Chrome extension (Manifest V3) with URL warning interstitial; Gmail content script and email warning banner still to come
+- `/backend` — Cloudflare Worker with `POST /analyze/url`, `POST /analyze/email`, and streaming `POST /explain/url`, `POST /explain/email` (heuristics + Claude Haiku fallback, KV verdict cache, per-install rate limiting). Live at `https://whyshield-backend.knower.workers.dev`, which also serves the [privacy policy](https://whyshield-backend.knower.workers.dev/privacy).
+- `/extension` — Chrome extension (Manifest V3): URL warning page, Gmail banner, "Explain why" side panel, settings page. Installable unpacked today; Chrome Web Store submission is prepared in `/store`.
 
 ## Repo layout
 
 ```
 extension/   Chrome extension (Manifest V3, TypeScript)
 backend/     Cloudflare Worker (TypeScript + Hono)
+store/       Chrome Web Store submission kit (listing copy, privacy policy, checklist)
+docs/        ARCHITECTURE.md: the project charter and every design decision
+design/      Visual direction mockup and mascot masters
 ```
 
 ## Running the backend locally

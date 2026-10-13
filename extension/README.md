@@ -133,7 +133,7 @@ Every runtime consumer reads these through `getSettings()` in `src/shared/settin
 
 ## Visual identity and mascot
 
-Palette, fonts, and reusable treatments live in `src/shared/theme.css`; the design source is `design/design-direction.html` at the repo root. Mascot masters are in `design/mascot/`; the sizes the extension ships are rendered into `public/mascot/` by `pnpm render-mascot` (sharp). Fonts are bundled in `public/fonts/`, never fetched. See the Visual identity section of the root `CLAUDE.md` for the motif rules and the contrast table.
+Palette, fonts, and reusable treatments live in `src/shared/theme.css`; the design source is `design/design-direction.html` at the repo root. Mascot masters are in `design/mascot/`; the sizes the extension ships are rendered into `public/mascot/` by `pnpm render-mascot` (sharp). Fonts are bundled in `public/fonts/`, never fetched. See the Visual identity section of `docs/ARCHITECTURE.md` for the motif rules and the contrast table.
 
 ## "Explain why" streaming
 
@@ -144,4 +144,4 @@ Reopening the side panel from the toolbar (without a fresh "Explain why" click) 
 ## What's not done yet
 
 - Viewing or clearing bypasses and the email safe-list from the settings page (DevTools only for now)
-- Chrome Web Store listing
+- Chrome Web Store submission. The kit is in `store/` (listing copy, permission justifications, privacy policy, disclosure answers, screenshot guide, ordered checklist); `pnpm package` produces the zip.

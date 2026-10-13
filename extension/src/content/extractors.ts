@@ -8,7 +8,10 @@
 //   [data-message-id]                   — Gmail internal id (fallback)
 //   .a3s                                — rendered message body container
 //   .gmail_quote, blockquote.gmail_quote — quoted reply chain to strip
-//   .gmail_extra                         — signatures/below-quote padding
+//   .gmail_extra                         — wrapper/padding around the quoted
+//                                          chain (the signature block is
+//                                          NOT stripped; .gmail_signature
+//                                          stays in the analyzed text)
 //   [email][name]                        — sender attribution span (the
 //                                          first one within a message div
 //                                          is the From; To/Cc only appear
@@ -18,7 +21,7 @@
 // Reply-To is intentionally NOT extracted in v1: it lives behind Gmail's
 // "show details" expand-arrow and isn't in the default DOM. The backend's
 // `replyTo` field stays optional and the heuristic just doesn't fire.
-// Captured in CLAUDE.md "Known v2 priorities" if not already.
+// Captured in docs/ARCHITECTURE.md "Known v2 priorities".
 
 export function extractMessageId(msgEl: Element): string | null {
   return msgEl.getAttribute("data-legacy-message-id") || msgEl.getAttribute("data-message-id");

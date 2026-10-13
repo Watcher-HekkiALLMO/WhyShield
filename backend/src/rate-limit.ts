@@ -58,7 +58,7 @@ export type RateLimitResult = { allowed: true; count: number } | { allowed: fals
 //
 // The effective count is the max of the two. Exact enforcement would
 // need a Durable Object; this is deliberately the cheaper approximation
-// (noted in CLAUDE.md as a v2 item). Any KV failure fails OPEN: a
+// (noted in docs/ARCHITECTURE.md as a v2 item). Any KV failure fails OPEN: a
 // storage blip should never block a user from getting a verdict.
 export type MemoryCounts = Map<string, number>;
 

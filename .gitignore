@@ -5,6 +5,9 @@ node_modules/
 # Build output
 dist/
 build/
+extension/release/
+# Store screenshots are captures of a Gmail inbox; the guide (store/screenshots.md) is tracked, the images are not
+store/screenshots/
 *.tsbuildinfo
 
 # Wrangler / Cloudflare local state and secrets
@@ -39,5 +42,6 @@ coverage/
 # Misc
 .cache/
 
-# Claude Code per-machine settings (project-shared settings live in .claude/settings.json)
-.claude/settings.local.json
+# Assistant working notes stay local. The committed project charter is docs/ARCHITECTURE.md.
+CLAUDE.md
+.claude/
