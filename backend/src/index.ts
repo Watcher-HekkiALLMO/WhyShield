@@ -21,6 +21,12 @@ import {
 } from "./explain";
 import { runHeuristics } from "./heuristics";
 import { normalizeUrl } from "./heuristics/normalize";
+import {
+  ANALYZE_LIMIT_PER_HOUR,
+  EXPLAIN_LIMIT_PER_HOUR,
+  INSTALL_HEADER,
+  rateLimit,
+} from "./rate-limit";
 import type { AnalyzeEmailRequest, AnalyzeResponse, AnalyzeUrlRequest } from "./types";
 
 interface Env {
@@ -76,9 +82,16 @@ app.use(
   cors({
     origin: (origin) => (origin && origin.startsWith("chrome-extension://") ? origin : ""),
     allowMethods: ["POST", "OPTIONS"],
-    allowHeaders: ["Content-Type", API_KEY_HEADER],
+    allowHeaders: ["Content-Type", API_KEY_HEADER, INSTALL_HEADER],
   }),
 );
+
+// Per-install rate limits, applied after CORS (so preflights are never
+// counted) and before any route. Explain is tighter because each call
+// is a Sonnet stream, roughly 10x the cost of a Haiku verdict, and a
+// human can't read 50 explanations an hour anyway.
+app.use("/analyze/*", rateLimit<{ Bindings: Env }>("analyze", ANALYZE_LIMIT_PER_HOUR));
+app.use("/explain/*", rateLimit<{ Bindings: Env }>("explain", EXPLAIN_LIMIT_PER_HOUR));
 
 app.get("/", (c) => c.text("WhyShield backend OK"));
 

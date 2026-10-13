@@ -116,7 +116,7 @@ Open it by right-clicking the WhyShield toolbar icon → **Options**, or via `ch
 | Warn about suspicious emails in Gmail | on | sync | Off = the Gmail observer is never attached. Turning it on with Gmail open starts it without a reload. |
 | Sensitivity | 0.70 | sync | Threshold for "suspicious" verdicts. 0.5 = more warnings, 0.9 = fewer. "Malicious" always warns. |
 | Trusted sites | empty | sync | One host per line, exact match, no subdomain inheritance. Skips analysis entirely. URL-only: emails are always checked because senders can be faked. |
-| Backend address | `http://localhost:8787` | sync | Must be a well-formed http(s) URL or the save is refused. |
+| Backend address | production build: `https://whyshield-backend.knower.workers.dev`; dev build: `http://localhost:8787` | sync | Chosen by Vite mode at build time (`pnpm build` vs `pnpm dev`). Must be `https://`, or `http://` to localhost only, or the save is refused. |
 | Your own Anthropic API key | empty | **local only** | Sent as `X-WhyShield-API-Key` on every backend request; the backend uses it for that request's Claude calls. Never synced, never logged. |
 
 Changes apply on the next navigation or next email opened; no extension reload needed. **Save** is all-or-nothing: a bad backend URL or an unreadable trusted-host line shows an inline message and nothing is written. **Reset to defaults** also clears the API key.

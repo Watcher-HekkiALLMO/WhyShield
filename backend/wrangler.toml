@@ -3,17 +3,22 @@ main = "src/index.ts"
 compatibility_date = "2026-04-26"
 compatibility_flags = ["nodejs_compat"]
 
-# 24h verdict cache, keyed by sha256(normalizedUrl).
+# Serve on the account's workers.dev subdomain:
+#   https://whyshield-backend.knower.workers.dev
+# No per-version preview URLs: a security backend shouldn't have extra
+# live hostnames for every upload.
+workers_dev = true
+preview_urls = false
+
+# 24h verdict cache, keyed by sha256(normalizedUrl). Also holds the
+# per-install rate-limit counters
+# (rl:<analyze|explain>:<installId>:<yyyymmddhh>, 2h TTL).
 #
-# The `id` below is a fake-but-format-valid placeholder. In local dev
-# (`wrangler dev`, which is local by default in wrangler 3+), Miniflare
-# provides an in-memory KV simulator and ignores the id entirely — the
-# binding works as long as the block is present.
-#
-# Before deploying to Cloudflare for real:
-#   1. Run `wrangler kv namespace create VERDICT_CACHE`
-#   2. Replace the placeholder id below with the returned id
-#   3. `wrangler deploy`
+# The id is the real production namespace, created with
+# `wrangler kv namespace create VERDICT_CACHE`. In local dev
+# (`wrangler dev`, local by default), Miniflare provides an in-memory
+# KV simulator and ignores the id entirely, so local runs never touch
+# production data. Forks: create your own namespace and swap the id.
 [[kv_namespaces]]
 binding = "VERDICT_CACHE"
-id = "0000000000000000000000000000abcd"
+id = "19c386414858476699a601ce4940bb5c"

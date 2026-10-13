@@ -38,8 +38,11 @@ Test the URL analyzer:
 ```bash
 curl -X POST http://localhost:8787/analyze/url \
   -H "Content-Type: application/json" \
+  -H "X-WhyShield-Install: dev-curl-00000000" \
   -d '{"url":"https://paypa1.com/login"}'
 ```
+
+The `X-WhyShield-Install` header is required on every `/analyze/*` and `/explain/*` call. The extension sends a random per-install UUID; for curl any 8–64 character string of letters, digits, and dashes works. Requests without it get `400 { "error": "missing-install-id" }`. Each id gets 200 analyze and 50 explain calls per UTC hour, after which the backend answers `429 { "error": "rate-limited" }`.
 
 Expected response shape:
 
@@ -57,6 +60,7 @@ Stream a Sonnet explanation:
 ```bash
 curl -N -X POST http://localhost:8787/explain/url \
   -H "Content-Type: application/json" \
+  -H "X-WhyShield-Install: dev-curl-00000000" \
   -d '{
     "url": "https://paypa1.com/login",
     "verdict": "malicious",
@@ -72,6 +76,7 @@ Test the email analyzer with a fake phishing payload:
 ```bash
 curl -X POST http://localhost:8787/analyze/email \
   -H "Content-Type: application/json" \
+  -H "X-WhyShield-Install: dev-curl-00000000" \
   -d '{
     "from": "PayPal Service <noreply@paypa1.com>",
     "replyTo": "billing@otherdomain.xyz",
@@ -105,6 +110,7 @@ Stream a Sonnet explanation for an email:
 ```bash
 curl -N -X POST http://localhost:8787/explain/email \
   -H "Content-Type: application/json" \
+  -H "X-WhyShield-Install: dev-curl-00000000" \
   -d '{
     "from": "PayPal Service <noreply@paypa1.com>",
     "subject": "Action required",
@@ -119,6 +125,25 @@ curl -N -X POST http://localhost:8787/explain/email \
 ```
 
 Same SSE shape as `/explain/url`. Two- to three-paragraph educational stream that walks the reader through what's off about the email, the wider phishing pattern, and what to do next.
+
+## Deploying
+
+The reference backend runs at `https://whyshield-backend.knower.workers.dev`. A production build of the extension (`pnpm build` in `/extension`) points there by default; `pnpm dev` points at `http://localhost:8787`. Vite's mode decides, nothing to toggle by hand. The settings page can override either.
+
+To run your own copy on Cloudflare Workers (free plan is enough to start):
+
+1. `cd backend && npx wrangler login` — opens a browser for Cloudflare OAuth.
+2. `npx wrangler kv namespace create VERDICT_CACHE` — copy the printed `id` into the `[[kv_namespaces]]` block in `backend/wrangler.toml`.
+3. `npx wrangler secret put ANTHROPIC_API_KEY` — paste your Anthropic key when prompted. It is stored encrypted on Cloudflare and never written to a file. If wrangler asks to create the Worker first, say yes.
+4. `npx wrangler deploy` — on a fresh account it asks you to register a `workers.dev` subdomain; pick one. It then prints your URL.
+5. Put that URL in `PRODUCTION_BACKEND_URL` in `extension/src/shared/config.ts` and rebuild the extension.
+
+Things worth knowing:
+
+- **Rate limits.** Each extension install gets 200 `/analyze/*` and 50 `/explain/*` requests per UTC hour, keyed by a random per-install UUID sent as `X-WhyShield-Install`. Over the limit returns `429 { "error": "rate-limited" }` and the extension waits for the next hour. Counting uses an in-memory layer per worker plus KV, so it's approximate under bursts from many locations but reliable for the common case.
+- **KV free tier allows 1,000 writes per day.** Every counted request is one write. Fine for development; move to Workers Paid before inviting users, or caching and the KV half of rate limiting will silently fail open past the cap (memory still counts).
+- **Inspecting production KV.** Wrangler 4's `kv key list` and `kv key get` default to the local dev store. Add `--remote` to see the live namespace.
+- **Rolling back.** `npx wrangler rollback` returns to the previous version. `npx wrangler delete` removes the worker entirely.
 
 ## License
 

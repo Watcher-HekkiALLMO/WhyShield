@@ -274,23 +274,28 @@ landed. Still open:
 - No way to view or clear the 1-hour Continue-anyway bypasses or the
   per-message email safe-list from the options page. Today that's a
   DevTools trip (documented in extension/README.md).
+- When the extension is rate-limited (429), show a notice on the options
+  page like the BYOK-rejected one: "WhyShield is paused until [time]
+  because it hit its hourly limit." Currently silent: the cooldown in
+  shared/backend.ts is honored per path family until the next UTC hour,
+  but nothing tells the user that protection is paused.
 
-### Production deploy
-- Cloudflare Workers deploy (currently localhost-only).
-- Real KV namespace via `wrangler kv namespace create VERDICT_CACHE`.
-- ANTHROPIC_API_KEY as a worker secret (not committed .dev.vars).
-- Extension BACKEND_URL switches to production worker URL.
-- Per-install rate limiting (architecture is there, implementation isn't).
+### Production deploy (shipped in session 7; leftovers)
+Worker, KV, secret, rate limiting, and the Vite-mode URL switch all
+landed; see the Deployment section. Still open:
 - Hard monthly spending cap on the Anthropic account before public
   launch.
+- Workers Paid plan (or every-Nth-request counter writes) before public
+  launch, so the KV write budget doesn't silently turn off caching and
+  the KV layer of rate limiting.
+- Durable Object counter if approximate rate limiting ever proves
+  insufficient.
 
 ### Tooling upgrades
-- Wrangler 3.114.17 → 4 (currently has deprecation warnings about the
-  compatibility date).
 - @crxjs/vite-plugin off the 2.0.0-beta.28 (currently flagged
-  deprecated).
-- Both deferrable until they bite or until production deploy forces
-  them.
+  deprecated). Deferrable until it bites.
+- (Wrangler 3 → 4 landed in session 7, along with
+  @cloudflare/workers-types 4 → 5 as its required peer.)
 
 ### Privacy options
 - Optional local-model mode via Ollama. Routes analysis to a
@@ -304,19 +309,72 @@ landed. Still open:
 - Apply for Anthropic OSS / startup API credits once the project has
   visible traction.
 
+## Deployment
+- **Live worker:** `https://whyshield-backend.knower.workers.dev`
+  (Cloudflare Workers, name `whyshield-backend`, workers.dev subdomain
+  `knower`, account owned by the product owner). `wrangler.toml` sets
+  `workers_dev = true` and `preview_urls = false`: a security backend
+  gets exactly one live hostname, no per-version preview URLs.
+- **Deploy:** `cd backend && npx wrangler deploy`. Requires a Cloudflare
+  login on the machine (`npx wrangler login`, browser OAuth). Deploys are
+  reversible with `npx wrangler rollback` or `npx wrangler delete`.
+- **Secrets:** `ANTHROPIC_API_KEY` is a worker secret, set once with
+  `npx wrangler secret put ANTHROPIC_API_KEY` (prompts; paste the value).
+  It is never in any file. Locally the same name comes from the
+  gitignored `.dev.vars`. There is no other secret.
+- **KV:** one namespace, `VERDICT_CACHE`, id in `wrangler.toml`. Holds
+  the 24h verdict cache and the rate-limit counters. The id is a resource
+  identifier, not a credential, so committing it is fine. Wrangler 4's
+  `kv key list/get` commands default to the **local** Miniflare store;
+  pass `--remote` to inspect production.
+- **Rate limits** (`/backend/src/rate-limit.ts`): per install, per UTC
+  clock hour, 200 for `/analyze/*` and 50 for `/explain/*`. Explain is
+  tighter because each call is a Sonnet stream, roughly 10x a Haiku
+  verdict, and no human reads 50 explanations an hour. The install id is
+  a random UUID the extension mints once (`shared/install-id.ts`) and
+  sends as `X-WhyShield-Install`; it is not linked to any account and is
+  never logged or echoed. Missing or malformed id → 400; over the limit →
+  `429 { error: "rate-limited" }`. The extension then stops calling that
+  path family until the next UTC hour (cooldown per family in
+  `shared/backend.ts`) and fails open.
+- **Why two counting layers.** KV reads come from a per-location cache
+  up to 60s stale and there is no atomic increment, so a 200-request
+  burst from one place never trips a KV-only counter (observed in
+  production during session 7). An in-memory counter per worker isolate
+  catches bursts instantly; KV carries the count across time and
+  locations; the effective count is the max. Approximate under
+  multi-location bursts by design. Exact enforcement would need a
+  Durable Object: a v2 item if abuse ever shows up.
+- **KV free-tier budget:** 1,000 writes/day. Every counted request is one
+  KV write, plus one per uncached verdict. Past the daily cap KV puts
+  throw and both caching and the KV layer of rate limiting fail open
+  (memory still counts). Fine for development traffic; before public
+  launch, move to Workers Paid or cut counter writes to every Nth
+  request.
+- **Extension URL switch:** `shared/config.ts` picks the backend by Vite
+  mode at build time. `pnpm build` (production) bakes in the live URL;
+  `pnpm dev` (development) uses `http://localhost:8787`. No manual
+  switching. The settings page can still override either.
+- **One-time setup for a fresh account or fork:** `npx wrangler login` →
+  `npx wrangler kv namespace create VERDICT_CACHE` and put the id in
+  `wrangler.toml` → `npx wrangler secret put ANTHROPIC_API_KEY` → register
+  a workers.dev subdomain when `deploy` asks → `npx wrangler deploy` →
+  put the printed URL in `PRODUCTION_BACKEND_URL` in
+  `extension/src/shared/config.ts`.
+- **Still open before public launch:** hard monthly spending cap on the
+  Anthropic account.
+
 ## Local development
-- Backend: `cd backend && pnpm dev` (runs `wrangler dev`). Wrangler 3 is local
-  by default and uses Miniflare to simulate KV in-memory. The
-  `[[kv_namespaces]]` block in `backend/wrangler.toml` declares a fake
-  placeholder id (`0000000000000000000000000000abcd`) — Miniflare ignores
-  this id locally and provides a working in-memory namespace. **Do not** try
-  to use `--kv VERDICT_CACHE` as a wrangler flag; that flag does not exist.
-  Replace the placeholder id only when wiring up a real Cloudflare deploy.
-- Backend dev server should print `Ready on http://127.0.0.1:8787`. Two
-  warnings on startup are expected and safe to ignore: (a) "wrangler is
-  out-of-date" (we're pinned to wrangler 3 deliberately for now) and (b) a
-  compatibility-date fallback warning because our `compatibility_date` is
-  newer than what wrangler 3's bundled workerd supports.
+- Backend: `cd backend && pnpm dev` (runs `wrangler dev`, wrangler 4).
+  Local by default; Miniflare simulates KV in-memory and ignores the
+  namespace id in `backend/wrangler.toml`, so local runs never touch the
+  production namespace even though the real id is checked in. **Do not**
+  try to use `--kv VERDICT_CACHE` as a wrangler flag; that flag does not
+  exist. The rate limiter runs locally too, against the in-memory KV, so
+  a curl loop can hit 429 on localhost without any deploy.
+- Backend dev server should print `Ready on http://127.0.0.1:8787` with
+  no warnings. (The wrangler 3 era had two expected warnings; the
+  upgrade to wrangler 4 in session 7 removed both.)
 - Extension: `cd extension && pnpm dev` (Vite + CRXJS HMR). After load-
   unpacked from `extension/dist/`, click reload on `chrome://extensions`
   after rebuilds for the service worker to pick up changes.
