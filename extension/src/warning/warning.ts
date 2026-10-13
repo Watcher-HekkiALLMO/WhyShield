@@ -55,6 +55,80 @@ function headlineFor(reasons: Reason[]): string {
   }
 }
 
+// Edit distance, used only to find which host label the typosquat
+// heuristic matched. Hosts are a handful of short labels, so the naive
+// O(n*m) table is fine.
+function editDistance(a: string, b: string): number {
+  const prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let diag = prev[0] ?? 0;
+    prev[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = prev[j] ?? 0;
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      prev[j] = Math.min(tmp + 1, (prev[j - 1] ?? 0) + 1, diag + cost);
+      diag = tmp;
+    }
+  }
+  return prev[b.length] ?? 0;
+}
+
+// Render the address. When the top reason is typosquat-of-brand, the
+// host label closest to the brand's first label (paypa1 vs paypal) gets
+// a wavy crimson underline so the eye lands on the swapped character.
+// Built from text nodes and spans only: the URL is attacker-controlled
+// and must never go through innerHTML.
+function renderSourceUrl(el: HTMLElement, url: string, reasons: Reason[]): void {
+  el.textContent = "";
+  const top = reasons[0];
+  // `reasons` comes from the query string with no shape check and this
+  // page is web-accessible, so detail must be verified as a string before
+  // it's used; a bad shape falls back to the plain URL, not a crash.
+  const brandLabel =
+    top?.code === "typosquat-of-brand" && typeof top.detail === "string"
+      ? top.detail.split(".")[0]
+      : undefined;
+
+  let parsed: URL | null = null;
+  try {
+    parsed = new URL(url);
+  } catch {
+    parsed = null;
+  }
+  if (!brandLabel || !parsed || !url.includes(parsed.hostname)) {
+    el.textContent = url;
+    return;
+  }
+
+  const labels = parsed.hostname.split(".");
+  let best = -1;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  labels.forEach((label, i) => {
+    const d = editDistance(label.toLowerCase(), brandLabel.toLowerCase());
+    if (d < bestDistance) {
+      bestDistance = d;
+      best = i;
+    }
+  });
+  // Only underline a near miss. A label that merely shares a letter or
+  // two with the brand would be a confusing thing to point at.
+  if (best === -1 || bestDistance > 2) {
+    el.textContent = url;
+    return;
+  }
+
+  const hostStart = url.indexOf(parsed.hostname);
+  const labelOffset = labels.slice(0, best).reduce((n, l) => n + l.length + 1, 0);
+  const start = hostStart + labelOffset;
+  const end = start + (labels[best]?.length ?? 0);
+
+  el.append(url.slice(0, start));
+  const bad = document.createElement("span");
+  bad.className = "bad";
+  bad.textContent = url.slice(start, end);
+  el.append(bad, url.slice(end));
+}
+
 async function onExplainWhy(params: WarningParams): Promise<void> {
   // The side panel reads its context from chrome.storage.session on
   // mount (and on storage.onChanged, for repeat clicks). The background
@@ -115,13 +189,13 @@ async function onContinue(params: WarningParams): Promise<void> {
 }
 
 function render(params: WarningParams): void {
-  // Tag the body with the verdict so future styling can differentiate
-  // "malicious" vs "suspicious" without TS changes.
+  // The stylesheet keys the band color and the malicious-only motifs
+  // (X watermark, crack) off this attribute. No other TS involvement.
   document.body.dataset.verdict = params.verdict;
 
   document.getElementById("headline")!.textContent = headlineFor(params.reasons);
   document.getElementById("explanation")!.textContent = params.explanation;
-  document.getElementById("source-url")!.textContent = params.url;
+  renderSourceUrl(document.getElementById("source-url")!, params.url, params.reasons);
 
   document.getElementById("explain-btn")!.addEventListener("click", () => {
     void onExplainWhy(params);

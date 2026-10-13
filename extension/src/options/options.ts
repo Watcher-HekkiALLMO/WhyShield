@@ -53,6 +53,11 @@ function showError(el: HTMLParagraphElement, message: string | null): void {
 
 function renderSensitivity(): void {
   els.sensitivityValue.textContent = Number(els.sensitivity.value).toFixed(2);
+  // Fill the track left of the thumb. A square thumb rules out
+  // accent-color, so the CSS paints the fill from this percentage.
+  const { min, max, value } = els.sensitivity;
+  const pct = ((Number(value) - Number(min)) / (Number(max) - Number(min))) * 100;
+  els.sensitivity.style.setProperty("--fill", `${pct}%`);
 }
 
 function fillForm(s: Settings): void {

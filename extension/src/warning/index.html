@@ -4,26 +4,50 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WhyShield warning</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
     <link rel="stylesheet" href="./warning.css" />
   </head>
   <body>
-    <main class="card" role="main">
-      <div class="icon" aria-hidden="true">⚠</div>
-      <h1 id="headline">Checking this page</h1>
-      <p id="explanation" class="explanation"></p>
-      <p class="source">
-        <span class="source-label">Address:</span>
-        <span id="source-url" class="source-url"></span>
-      </p>
-      <div class="actions">
-        <button id="explain-btn" type="button" class="btn btn-secondary">Explain why</button>
-        <button id="back-btn" type="button" class="btn btn-primary">Go back</button>
-        <button id="continue-btn" type="button" class="btn btn-tertiary">Continue anyway</button>
+    <!-- The X watermark. CSS shows it only when body[data-verdict="malicious"]. -->
+    <svg class="x-mark" viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M12 12 L88 88 M88 12 L12 88" stroke="#d11a2a" stroke-width="14" stroke-linecap="square" />
+    </svg>
+    <main class="card w-outline" role="main">
+      <div class="w-band" aria-hidden="true"></div>
+      <div class="card-body">
+        <div class="head">
+          <img
+            class="mascot"
+            src="/mascot/stop-pose@1x.png"
+            srcset="/mascot/stop-pose@1x.png 1x, /mascot/stop-pose@2x.png 2x"
+            width="96"
+            height="96"
+            alt=""
+          />
+          <div class="headline-wrap">
+            <!-- The crack sits beside the headline, malicious only (same CSS rule). -->
+            <svg class="crack" viewBox="0 0 40 40" aria-hidden="true">
+              <path d="M20 2 L17 14 L24 18 L15 26 L21 38" stroke="#d11a2a" stroke-width="2.2" fill="none" stroke-linejoin="miter" />
+              <path d="M20 2 L26 10" stroke="#d11a2a" stroke-width="1.6" fill="none" />
+            </svg>
+            <h1 id="headline">Checking this page</h1>
+          </div>
+        </div>
+        <p id="explanation" class="explanation"></p>
+        <p class="source">
+          <span class="source-label w-label">Address:</span>
+          <span id="source-url" class="source-url"></span>
+        </p>
+        <div class="actions">
+          <button id="explain-btn" type="button" class="btn btn-secondary">Explain why</button>
+          <button id="back-btn" type="button" class="btn btn-primary">Go back</button>
+          <button id="continue-btn" type="button" class="btn btn-tertiary">Continue anyway</button>
+        </div>
+        <p class="footnote">
+          Continuing skips this warning for the next hour on this exact host.
+          Subdomains are still checked separately.
+        </p>
       </div>
-      <p class="footnote">
-        Continuing skips this warning for the next hour on this exact host.
-        Subdomains are still checked separately.
-      </p>
     </main>
     <script type="module" src="./warning.ts"></script>
   </body>

@@ -131,6 +131,10 @@ Every runtime consumer reads these through `getSettings()` in `src/shared/settin
 4. Paste a deliberately wrong key (e.g. `sk-ant-test`) into the API key field and save. Trigger a warning and click **Explain why**. The backend answers `401 { "error": "byok-rejected" }` instead of streaming, so the side panel lands on its error state with **Try again**. Switch back to the settings tab: an amber notice under the key field reads "This key was rejected by Anthropic. Check it and save again." Clear the field and save. The notice disappears and the stream comes back on the shared key. A rejected key is never silently swapped for the shared one.
 5. Type `http://192.168.1.10:8787` as the backend address and save. The save is refused with "Use https:// for remote backends. http:// is only allowed for localhost." `http://localhost:8787` and `http://127.0.0.1:8787` still save.
 
+## Visual identity and mascot
+
+Palette, fonts, and reusable treatments live in `src/shared/theme.css`; the design source is `design/design-direction.html` at the repo root. Mascot masters are in `design/mascot/`; the sizes the extension ships are rendered into `public/mascot/` by `pnpm render-mascot` (sharp). Fonts are bundled in `public/fonts/`, never fetched. See the Visual identity section of the root `CLAUDE.md` for the motif rules and the contrast table.
+
 ## "Explain why" streaming
 
 Click **Explain why** on the warning interstitial → side panel opens → a Sonnet-generated 2–3 paragraph educational explanation streams in, character by character, in plain English. Multiple clicks generate fresh explanations (no caching for explanations in v1; verdicts are still cached for 24h on the backend). If the network drops mid-stream, the side panel keeps what it got plus a **Try again** button.
@@ -140,6 +144,4 @@ Reopening the side panel from the toolbar (without a fresh "Explain why" click) 
 ## What's not done yet
 
 - Viewing or clearing bypasses and the email safe-list from the settings page (DevTools only for now)
-- Real Watcher mascot art (currently a placeholder shield SVG)
 - Chrome Web Store listing
-- Production backend deployment

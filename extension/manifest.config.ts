@@ -9,6 +9,13 @@ import { defineManifest } from "@crxjs/vite-plugin";
 //                  on a tab with no history (typed-URL phishing case).
 //
 // host_permissions: needed because we read every navigation URL to analyze it.
+const MASCOT_ICONS = {
+  16: "mascot/icon-16.png",
+  32: "mascot/icon-32.png",
+  48: "mascot/icon-48.png",
+  128: "mascot/icon-128.png",
+};
+
 export default defineManifest({
   manifest_version: 3,
   name: "WhyShield",
@@ -32,8 +39,10 @@ export default defineManifest({
       run_at: "document_idle",
     },
   ],
+  // Watcher icon, rendered from design/mascot/icon.png by
+  // `pnpm render-mascot`. Chrome picks the size it needs per surface.
   action: {
-    default_icon: "icon.svg",
+    default_icon: MASCOT_ICONS,
     default_title: "WhyShield",
   },
   side_panel: {
@@ -48,14 +57,12 @@ export default defineManifest({
   },
   web_accessible_resources: [
     {
-      // icon.svg is referenced by Chrome itself (toolbar action, icons),
-      // not by web pages, so it doesn't need to be web-accessible. Listing
-      // it here causes Vite to double-emit (once via public/, once via WAR).
+      // The icon PNGs are referenced by Chrome itself (toolbar action,
+      // icons), not by web pages, so they don't need to be web-accessible.
+      // Listing public/ files here makes Vite double-emit them.
       resources: ["src/warning/index.html"],
       matches: ["<all_urls>"],
     },
   ],
-  icons: {
-    128: "icon.svg",
-  },
+  icons: MASCOT_ICONS,
 });

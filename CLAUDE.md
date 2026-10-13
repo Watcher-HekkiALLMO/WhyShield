@@ -53,8 +53,8 @@ antivirus screaming at them.
 - Mascot: **Watcher** — an existing original character the product owner has
   illustrated, used as the toolbar icon and the warning interstitial
   illustration. The hand-out "stop" pose appears on warnings; the calm pose
-  represents safe states. (Mascot integration is later, not relevant to this
-  session — recorded here for context.)
+  represents safe states. (Integrated in session 8a; see Visual identity
+  under Architecture.)
 
 ## Architecture (locked)
 
@@ -75,6 +75,61 @@ Stack:
   - Quality:  Biome (lint/format), Vitest (tests).
   - Secrets:  never committed. Backend uses Cloudflare env vars; the
               extension carries no secrets at all.
+
+### Visual identity
+- **Palette source:** `design/design-direction.html` (the "Make it
+  Watcher" mockup). `extension/src/shared/theme.css` carries its hex
+  values verbatim as `--w-*` custom properties, plus the font stacks,
+  the outline treatment (3px border + flat offset shadow, never a blur),
+  the verdict band (6px stripe keyed off `data-verdict`), and the three
+  button styles. The warning page, side panel, and options page import
+  it; nothing hard-codes a color outside it except the Gmail banner,
+  which inlines the same values because a Shadow DOM inside Gmail
+  cannot reach the file. Keep the two in sync.
+- **Two tokens are not in the mockup**, both added for WCAG AA:
+  `--w-crimson-text: #f04452` for crimson *as small text* (the mockup's
+  #d11a2a is 3.6:1 on ink) and `--w-crystal-deep: #7c4de6` as the
+  primary button fill (white on #8b5cf6 is 4.2:1). Primary hover goes
+  darker, not lighter, for the same reason. Gold passes at 10.6:1 on
+  ink, so it is used as-is. The band, X, and crack are not text and stay
+  on the true crimson.
+- **Motif rules.** The X watermark and the crack beside the headline
+  render only when `verdict === "malicious"`; suspicious gets the gold
+  band and nothing else; safe states show neither. Both are inline SVGs
+  gated purely by CSS on `body[data-verdict]`. The Gmail banner gets
+  palette and band only: no mascot, no watermark, 2px border, no offset
+  shadow, system fonts. It lives inside Gmail's UI and should read as a
+  note, not a poster.
+- **Mascot.** Masters (2048px RGBA) live in `design/mascot/` and never
+  ship. `pnpm render-mascot` in `/extension` (sharp, Lanczos, trim +
+  6% margin) writes the shipped sizes to `extension/public/mascot/`:
+  stop-pose 96/192 on the warning card, calm-face 44/88 in the side
+  panel and options headers, icon 16/32/48/128 for the manifest.
+  Outputs are committed; rerun only when a master changes. thinking.png
+  is rendered (80/160) but unused so far; the side panel loading state
+  is three crystal shards.
+- **Mascot motion (side panel only).** The header calm-face "talks
+  along" with the stream: one short nod per SSE chunk that appended
+  text (150ms, rotate -2.5deg → +1deg → 0 with a 1px dip, ease-out,
+  origin near the neck). sidepanel.ts adds a `nod` class and removes it
+  on `animationend`/`animationcancel`; a flag blocks a new nod until the
+  previous one ends, so chunk bursts don't jitter. In the streaming,
+  complete, and error states a 1px, 3s ease-in-out "breathe" loop runs;
+  nods happen only while streaming; no-data is fully still. The breathe
+  animation stays at index 0 of the animation list in every rule so a
+  nod never restarts it. `prefers-reduced-motion: reduce` removes every
+  transform. CSS transforms on the existing 44px img, no extra assets.
+- **Fonts are bundled, never fetched.** Space Grotesk (display, 500/700)
+  and DM Sans (text, 400/500/700), Latin subset, as woff2 in
+  `extension/public/fonts/` with their OFL license texts, declared via
+  `@font-face` in theme.css. Every stack falls back to system fonts.
+  Extensions must not phone home for assets.
+- **Contrast (WCAG AA, 4.5:1 for small text).** text #f3eefa on ink
+  16.9, on surface 15.4; body text #e3d9f0 on surface 12.9; muted
+  #b9a8d4 on surface 8.0; crystal-hi #c4a7f7 on ink 9.4 (secondary
+  button text 8.5 on surface); gold on ink 10.6, on gold wash 7.3;
+  crimson-text on ink 5.2, on surface 4.7, on crimson wash 4.6; white on
+  crystal-deep 5.2. Non-text only: crimson #d11a2a on ink 3.6.
 
 ### Streaming endpoints
 - `POST /explain/url` returns SSE (`text/event-stream`).
@@ -257,13 +312,6 @@ Surfaced during smoke testing:
   typosquat link, so heuristics are inconclusive and Haiku rates them
   below 0.7. Needs either a reward-scam keyword heuristic or a lower
   threshold for brand-impersonation-in-subject + unknown sender.
-
-### Real Watcher mascot
-Replace the placeholder shield SVG with the actual Watcher illustration.
-Hand-out "stop" pose for malicious warnings, calm pose for safe states.
-When this lands, re-tune the verdict-badge palette holistically — the
-saturated red on the malicious badge is currently the only deep red in
-the product and may want to soften.
 
 ### Settings page (shipped in session 6; leftovers)
 Whitelist, sensitivity slider, backend URL override, and BYOK all

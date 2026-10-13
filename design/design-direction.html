@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhyShield — Design Direction: Make it Watcher</title>
+<style>
+  /* ============================================================
+     PALETTE — derived from the Watcher sticker sheet.
+     Colors only; the character itself is not reproduced here.
+     ============================================================ */
+  :root {
+    /* Proposed Watcher palette */
+    --w-ink:        #120a1f;   /* near-black violet — base */
+    --w-surface:    #1f1235;   /* card surface */
+    --w-surface-2:  #2a1a47;   /* raised surface / inputs */
+    --w-line:       #4a2c7a;   /* thick outline — the hair purple */
+    --w-line-soft:  #332052;   /* subtle divider */
+    --w-text:       #f3eefa;   /* cream-white with violet tint */
+    --w-muted:      #b9a8d4;   /* lavender secondary text */
+    --w-crystal:    #8b5cf6;   /* purple accent — buttons, links */
+    --w-crystal-hi: #c4a7f7;   /* crystal highlight */
+    --w-crimson:    #d11a2a;   /* malicious, the X */
+    --w-crimson-bg: #3a0a12;   /* crimson wash */
+    --w-gold:       #f2b705;   /* suspicious — the calm eye */
+    --w-gold-bg:    #3d2e05;   /* gold wash */
+
+    /* Current (Tailwind-default) palette, for comparison */
+    --c-bg:    #0f172a;
+    --c-card:  #1e293b;
+    --c-line:  #334155;
+    --c-text:  #e2e8f0;
+    --c-muted: #94a3b8;
+    --c-blue:  #2563eb;
+    --c-amber: #f59e0b;
+    --c-red:   #7f1d1d;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "DM Sans", "Segoe UI", system-ui, sans-serif;
+    background: #0a0612;
+    color: #e9e2f3;
+    line-height: 1.5;
+    padding: 40px 24px 80px;
+  }
+
+  h1, h2, h3, .display {
+    font-family: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  .wrap { max-width: 1240px; margin: 0 auto; }
+
+  .intro { margin-bottom: 48px; }
+  .intro h1 { font-size: 34px; margin-bottom: 8px; color: #fff; }
+  .intro p { color: #b9a8d4; max-width: 720px; font-size: 16px; }
+  .intro .tag {
+    display: inline-block; margin-top: 14px; padding: 4px 10px;
+    border: 2px solid var(--w-crimson); color: var(--w-crimson);
+    font-family: "Space Grotesk", monospace; font-size: 12px; letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+
+  section { margin-bottom: 64px; }
+  section > h2 {
+    font-size: 20px; color: #fff; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  section > h2 .num {
+    font-family: "Space Grotesk", monospace; font-size: 12px;
+    color: var(--w-crystal-hi); border: 1px solid var(--w-line);
+    padding: 2px 8px; letter-spacing: .1em;
+  }
+  section > p.lead { color: #b9a8d4; margin-bottom: 20px; max-width: 760px; }
+
+  /* ---------- palette swatches ---------- */
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .sw { border: 2px solid var(--w-line-soft); overflow: hidden; }
+  .sw .chip { height: 64px; }
+  .sw .meta { padding: 8px 10px; background: var(--w-surface); font-size: 12px; }
+  .sw .meta b { display: block; color: #fff; font-family: "Space Grotesk", monospace; font-size: 11px; letter-spacing: .06em; }
+  .sw .meta span { color: var(--w-muted); font-family: monospace; font-size: 11px; }
+
+  /* ---------- compare grid ---------- */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  .pane { }
+  .pane > .label {
+    font-family: "Space Grotesk", monospace; font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; margin-bottom: 10px; color: #7c6a99;
+  }
+  .pane > .label.now  { color: #7c6a99; }
+  .pane > .label.next { color: var(--w-crystal-hi); }
+
+  /* ============================================================
+     CURRENT look (approximation of what's shipped today)
+     ============================================================ */
+  .cur { background: var(--c-bg); padding: 40px 24px; border-radius: 8px; }
+  .cur-card {
+    background: var(--c-card); border: 1px solid var(--c-line); border-radius: 12px;
+    padding: 28px; max-width: 460px; margin: 0 auto; color: var(--c-text);
+    font-family: system-ui, sans-serif;
+  }
+  .cur-card .icon { font-size: 30px; text-align: center; color: var(--c-amber); margin-bottom: 10px; }
+  .cur-card h3 { font-family: system-ui, sans-serif; font-size: 20px; text-align: center; margin-bottom: 10px; color: #f1f5f9; }
+  .cur-card p { font-size: 14px; color: #cbd5e1; text-align: center; margin-bottom: 14px; }
+  .cur-card .url { background: #0f172a; border: 1px solid var(--c-line); border-radius: 8px; padding: 10px 12px; font-family: monospace; font-size: 13px; color: #94a3b8; margin-bottom: 16px; }
+  .cur-card .url b { color: #cbd5e1; font-weight: 500; }
+  .cur-btns { display: flex; gap: 10px; margin-bottom: 10px; }
+  .cur-btn { flex: 1; padding: 11px; border-radius: 8px; text-align: center; font-size: 14px; font-weight: 600; }
+  .cur-btn.primary { background: var(--c-blue); color: #fff; }
+  .cur-btn.secondary { border: 1px solid var(--c-blue); color: #93c5fd; }
+  .cur-tertiary { text-align: center; font-size: 13px; color: #94a3b8; margin-bottom: 10px; }
+  .cur-foot { text-align: center; font-size: 12px; color: #94a3b8; }
+
+  /* ============================================================
+     PROPOSED look — "Make it Watcher"
+     ============================================================ */
+  .nxt { background: var(--w-ink); padding: 40px 24px; position: relative; overflow: hidden; }
+
+  /* the X watermark — faint, structural, only on malicious */
+  .nxt .x-mark {
+    position: absolute; right: -40px; top: -40px; width: 260px; height: 260px;
+    opacity: .07; pointer-events: none;
+  }
+
+  .nxt-card {
+    background: var(--w-surface);
+    border: 3px solid var(--w-line);          /* thick outline, like the stickers */
+    box-shadow: 6px 6px 0 var(--w-line-soft);  /* flat offset shadow, not a blur */
+    padding: 0; max-width: 480px; margin: 0 auto; color: var(--w-text);
+    position: relative;
+  }
+  .nxt-card .band {
+    height: 6px; background: var(--w-crimson);
+  }
+  .nxt-card .band.gold { background: var(--w-gold); }
+  .nxt-card .body { padding: 26px 26px 22px; }
+
+  .nxt-head { display: grid; grid-template-columns: 96px 1fr; gap: 18px; align-items: center; margin-bottom: 18px; }
+  .mascot {
+    width: 96px; height: 96px; border: 2px dashed var(--w-crystal);
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    font-family: "Space Grotesk", monospace; font-size: 10px; line-height: 1.3;
+    color: var(--w-crystal-hi); letter-spacing: .04em; padding: 6px;
+    background: var(--w-surface-2);
+  }
+  .mascot.small { width: 44px; height: 44px; font-size: 8px; padding: 3px; }
+  .nxt-head h3 {
+    font-size: 22px; line-height: 1.2; color: #fff; margin-bottom: 4px;
+    position: relative;
+  }
+  .nxt-head .sub { font-size: 13px; color: var(--w-muted); }
+
+  .nxt-card p.exp { font-size: 15px; color: #e3d9f0; margin-bottom: 16px; }
+
+  .nxt-url {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--w-ink); border: 2px solid var(--w-line-soft);
+    padding: 10px 12px; margin-bottom: 18px;
+    font-family: "JetBrains Mono", "Cascadia Code", monospace; font-size: 13px;
+  }
+  .nxt-url .k { color: var(--w-muted); font-family: "Space Grotesk", monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+  .nxt-url .v { color: #fff; }
+  .nxt-url .v .bad { color: var(--w-crimson); text-decoration: underline wavy var(--w-crimson); text-underline-offset: 3px; }
+
+  .nxt-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .nxt-btn {
+    padding: 12px 14px; text-align: center; font-size: 14px; font-weight: 700;
+    font-family: "Space Grotesk", system-ui, sans-serif; letter-spacing: .01em;
+    border: 2px solid transparent;
+  }
+  .nxt-btn.primary { background: var(--w-crystal); color: #fff; border-color: var(--w-crystal-hi); box-shadow: 3px 3px 0 var(--w-line); }
+  .nxt-btn.secondary { background: transparent; color: var(--w-crystal-hi); border-color: var(--w-crystal); }
+  .nxt-tertiary { text-align: center; font-size: 13px; color: var(--w-muted); margin-bottom: 12px; }
+  .nxt-tertiary u { text-decoration-color: var(--w-line); text-underline-offset: 3px; }
+  .nxt-foot { font-size: 12px; color: var(--w-muted); border-top: 1px solid var(--w-line-soft); padding-top: 12px; }
+
+  /* crack treatment on headline — a tiny SVG rendered inline */
+  .crack { position: absolute; left: -8px; top: -10px; width: 36px; height: 36px; opacity: .9; }
+
+  /* ---------- side panel (proposed) ---------- */
+  .panel { max-width: 360px; margin: 0 auto; background: var(--w-surface); border: 3px solid var(--w-line); box-shadow: 6px 6px 0 var(--w-line-soft); color: var(--w-text); }
+  .panel .ph { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 2px solid var(--w-line-soft); background: var(--w-ink); }
+  .panel .ph .brand { font-family: "Space Grotesk", monospace; font-weight: 700; letter-spacing: .08em; font-size: 13px; color: #fff; }
+  .panel .ph .brand small { display: block; font-weight: 400; letter-spacing: .14em; font-size: 9px; color: var(--w-muted); text-transform: uppercase; margin-top: 2px; }
+  .panel .pm { padding: 14px 16px; display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; align-items: start; border-bottom: 1px solid var(--w-line-soft); }
+  .badge {
+    display: inline-block; padding: 4px 9px; font-family: "Space Grotesk", monospace; font-size: 10px; letter-spacing: .14em;
+    text-transform: uppercase; font-weight: 700; border: 2px solid;
+  }
+  .badge.mal { color: var(--w-crimson); border-color: var(--w-crimson); background: var(--w-crimson-bg); }
+  .badge.sus { color: var(--w-gold); border-color: var(--w-gold); background: var(--w-gold-bg); }
+  .panel .pm .u { font-family: "JetBrains Mono", monospace; font-size: 12px; color: #fff; word-break: break-all; }
+  .panel .pm .s { font-size: 12px; color: var(--w-muted); }
+  .panel .pb { padding: 16px; font-size: 14px; color: #e3d9f0; }
+  .panel .pb p + p { margin-top: 12px; }
+  .panel .pb .cursor { display: inline-block; width: 8px; height: 15px; background: var(--w-crystal-hi); vertical-align: -2px; margin-left: 2px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* crystal loading state (replaces gray shimmer) */
+  .crystals { display: flex; gap: 8px; padding: 16px; }
+  .crystal { width: 22px; height: 26px; }
+
+  /* current side panel approx */
+  .cur-panel { max-width: 360px; margin: 0 auto; background: var(--c-card); border: 1px solid var(--c-line); border-radius: 10px; color: var(--c-text); font-family: system-ui, sans-serif; }
+  .cur-panel .h { padding: 12px 14px; border-bottom: 1px solid var(--c-line); font-weight: 700; font-size: 14px; }
+  .cur-panel .m { padding: 10px 14px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--c-line); }
+  .cur-panel .m .b { background: var(--c-red); color: #fee2e2; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; letter-spacing: .05em; }
+  .cur-panel .m .u { font-family: monospace; font-size: 12px; color: #94a3b8; }
+  .cur-panel .t { padding: 14px; font-size: 14px; color: #cbd5e1; }
+  .cur-panel .t p + p { margin-top: 10px; }
+
+  /* ---------- options (proposed) ---------- */
+  .opt { max-width: 520px; margin: 0 auto; color: var(--w-text); }
+  .opt .oh { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .opt .oh h3 { font-size: 24px; color: #fff; }
+  .opt .oh .sub { font-size: 12px; color: var(--w-muted); letter-spacing: .12em; text-transform: uppercase; font-family: "Space Grotesk", monospace; }
+  .osec { background: var(--w-surface); border: 3px solid var(--w-line); box-shadow: 5px 5px 0 var(--w-line-soft); padding: 18px 20px; margin-bottom: 18px; }
+  .osec .st { font-family: "Space Grotesk", monospace; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--w-crystal-hi); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .osec .st::after { content: ""; flex: 1; height: 2px; background: var(--w-line-soft); }
+  .row { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: start; margin-bottom: 14px; }
+  .tog { width: 40px; height: 22px; border: 2px solid var(--w-crystal); background: var(--w-crystal); position: relative; }
+  .tog::after { content: ""; position: absolute; right: 2px; top: 2px; width: 14px; height: 14px; background: #fff; }
+  .row b { display: block; font-size: 14px; color: #fff; margin-bottom: 2px; }
+  .row span { font-size: 12px; color: var(--w-muted); }
+  .slider { margin-top: 6px; }
+  .slider .lab { display: flex; justify-content: space-between; font-size: 11px; color: var(--w-muted); font-family: "Space Grotesk", monospace; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; }
+  .slider .track { height: 6px; background: var(--w-line-soft); position: relative; }
+  .slider .track::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 50%; background: var(--w-crystal); }
+  .slider .track::after { content: ""; position: absolute; left: calc(50% - 8px); top: -6px; width: 16px; height: 18px; background: var(--w-crystal-hi); border: 2px solid var(--w-line); }
+  .ta { background: var(--w-ink); border: 2px solid var(--w-line-soft); padding: 10px 12px; font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--w-muted); min-height: 64px; margin-bottom: 8px; }
+  .inp { background: var(--w-ink); border: 2px solid var(--w-line-soft); padding: 10px 12px; font-size: 13px; color: #fff; margin-bottom: 6px; }
+  .hint { font-size: 12px; color: var(--w-muted); }
+  .obtns { display: flex; gap: 10px; }
+
+  /* current options approx */
+  .cur-opt { max-width: 520px; margin: 0 auto; color: var(--c-text); font-family: system-ui, sans-serif; }
+  .cur-opt h3 { font-family: system-ui; font-size: 22px; margin-bottom: 14px; color: #f1f5f9; }
+  .cur-osec { background: var(--c-card); border: 1px solid var(--c-line); border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; }
+  .cur-osec .st { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #94a3b8; margin-bottom: 12px; }
+  .cur-row { display: flex; gap: 12px; align-items: start; margin-bottom: 12px; }
+  .cur-tog { width: 40px; height: 22px; border-radius: 999px; background: var(--c-blue); position: relative; flex-shrink: 0; }
+  .cur-tog::after { content: ""; position: absolute; right: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
+  .cur-row b { display: block; font-size: 14px; color: #f1f5f9; }
+  .cur-row span { font-size: 12px; color: #94a3b8; }
+
+  /* ---------- motif library ---------- */
+  .motifs { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  .motif { background: var(--w-surface); border: 2px solid var(--w-line-soft); padding: 18px; }
+  .motif .art { height: 90px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+  .motif b { display: block; font-family: "Space Grotesk", monospace; font-size: 12px; letter-spacing: .08em; color: #fff; margin-bottom: 4px; }
+  .motif span { font-size: 12px; color: var(--w-muted); }
+
+  /* ---------- notes ---------- */
+  .notes { background: var(--w-surface); border-left: 4px solid var(--w-crystal); padding: 18px 22px; }
+  .notes h3 { font-size: 15px; color: #fff; margin-bottom: 10px; }
+  .notes ol { padding-left: 20px; color: #d9cfe8; font-size: 14px; }
+  .notes li { margin-bottom: 8px; }
+  .notes code { font-family: "JetBrains Mono", monospace; font-size: 12px; background: var(--w-ink); padding: 1px 6px; color: var(--w-crystal-hi); }
+
+  @media (max-width: 860px) { .compare { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="intro">
+    <h1>WhyShield — Design Direction</h1>
+    <p>Current look is Tailwind-default dark mode: competent, anonymous. The proposed direction pulls palette, outline weight, and motifs from the Watcher sticker sheet so a screenshot of WhyShield reads as WhyShield. Same layouts, same copy, same buttons — only the visual identity changes. Dashed boxes mark where mascot art goes.</p>
+    <div class="tag">Make it Watcher</div>
+  </div>
+
+  <!-- ================= PALETTE ================= -->
+  <section>
+    <h2><span class="num">01</span> Palette</h2>
+    <p class="lead">Pulled from the sticker sheet's dominant tones. Deep violet replaces slate; crystal purple replaces blue; crimson and gold map to malicious and suspicious — which is exactly the red-eye / calm-eye duality already in the art.</p>
+    <div class="swatches">
+      <div class="sw"><div class="chip" style="background:#120a1f"></div><div class="meta"><b>INK</b><span>#120a1f · base</span></div></div>
+      <div class="sw"><div class="chip" style="background:#1f1235"></div><div class="meta"><b>SURFACE</b><span>#1f1235 · cards</span></div></div>
+      <div class="sw"><div class="chip" style="background:#2a1a47"></div><div class="meta"><b>SURFACE 2</b><span>#2a1a47 · inputs</span></div></div>
+      <div class="sw"><div class="chip" style="background:#4a2c7a"></div><div class="meta"><b>LINE</b><span>#4a2c7a · thick outline</span></div></div>
+      <div class="sw"><div class="chip" style="background:#8b5cf6"></div><div class="meta"><b>CRYSTAL</b><span>#8b5cf6 · accent</span></div></div>
+      <div class="sw"><div class="chip" style="background:#c4a7f7"></div><div class="meta"><b>CRYSTAL HI</b><span>#c4a7f7 · highlight</span></div></div>
+      <div class="sw"><div class="chip" style="background:#d11a2a"></div><div class="meta"><b>CRIMSON</b><span>#d11a2a · malicious</span></div></div>
+      <div class="sw"><div class="chip" style="background:#f2b705"></div><div class="meta"><b>GOLD</b><span>#f2b705 · suspicious</span></div></div>
+      <div class="sw"><div class="chip" style="background:#f3eefa"></div><div class="meta"><b>TEXT</b><span>#f3eefa · cream</span></div></div>
+      <div class="sw"><div class="chip" style="background:#b9a8d4"></div><div class="meta"><b>MUTED</b><span>#b9a8d4 · lavender</span></div></div>
+    </div>
+  </section>
+
+  <!-- ================= SCREEN 1: WARNING ================= -->
+  <section>
+    <h2><span class="num">02</span> Warning interstitial</h2>
+    <p class="lead">Highest-impact surface. Thick outline and flat offset shadow echo the sticker aesthetic. The crimson band at top replaces a generic ⚠. The mascot's hand-out pose sits where the triangle used to be. The X watermark is faint and only appears on malicious verdicts.</p>
+    <div class="compare">
+      <div class="pane">
+        <div class="label now">Current</div>
+        <div class="cur">
+          <div class="cur-card">
+            <div class="icon">⚠</div>
+            <h3>This site might not be the real paypal.com</h3>
+            <p>This site (paypa1.com) looks one character off from paypal.com, which is a common phishing trick. It may not be the real paypal.com.</p>
+            <div class="url">Address: <b>http://paypa1.com/login</b></div>
+            <div class="cur-btns">
+              <div class="cur-btn secondary">Explain why</div>
+              <div class="cur-btn primary">Go back</div>
+            </div>
+            <div class="cur-tertiary">Continue anyway</div>
+            <div class="cur-foot">Continuing skips this warning for the next hour on this exact host. Subdomains are still checked separately.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pane">
+        <div class="label next">Proposed</div>
+        <div class="nxt">
+          <svg class="x-mark" viewBox="0 0 100 100" aria-hidden="true">
+            <path d="M12 12 L88 88 M88 12 L12 88" stroke="#d11a2a" stroke-width="14" stroke-linecap="square"/>
+          </svg>
+          <div class="nxt-card">
+            <div class="band"></div>
+            <div class="body">
+              <div class="nxt-head">
+                <div class="mascot">WATCHER<br>hand-out<br>"stop" pose<br>(red eye)</div>
+                <div>
+                  <h3>
+                    <svg class="crack" viewBox="0 0 40 40" aria-hidden="true">
+                      <path d="M20 2 L17 14 L24 18 L15 26 L21 38" stroke="#d11a2a" stroke-width="2.2" fill="none" stroke-linejoin="miter"/>
+                      <path d="M20 2 L26 10" stroke="#d11a2a" stroke-width="1.6" fill="none"/>
+                    </svg>
+                    This site might not be the real paypal.com
+                  </h3>
+                  <div class="sub">Looks one character off from a site you'd trust.</div>
+                </div>
+              </div>
+              <p class="exp">This site (paypa1.com) looks one character off from paypal.com, which is a common phishing trick. It may not be the real paypal.com.</p>
+              <div class="nxt-url">
+                <span class="k">Address</span>
+                <span class="v">http://<span class="bad">paypa1</span>.com/login</span>
+              </div>
+              <div class="nxt-btns">
+                <div class="nxt-btn secondary">Explain why</div>
+                <div class="nxt-btn primary">Go back</div>
+              </div>
+              <div class="nxt-tertiary"><u>Continue anyway</u></div>
+              <div class="nxt-foot">Continuing skips this warning for the next hour on this exact host. Subdomains are still checked separately.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SCREEN 2: SIDE PANEL ================= -->
+  <section>
+    <h2><span class="num">03</span> Side panel — "Explain why"</h2>
+    <p class="lead">A small calm-face Watcher next to the wordmark makes the brand present without taking space. Verdict badge is a bordered tag, not a pill. The streaming cursor is crystal-purple. Loading state uses three crystal shards instead of gray shimmer bars.</p>
+    <div class="compare">
+      <div class="pane">
+        <div class="label now">Current</div>
+        <div class="cur">
+          <div class="cur-panel">
+            <div class="h">WhyShield</div>
+            <div class="m"><span class="b">MALICIOUS</span><span class="u">http://paypa1.com/login</span></div>
+            <div class="t">
+              <p>This site uses "paypa1.com" — notice that the letter "l" at the end of "paypal" has been swapped out for the number "1." The two characters look nearly identical at a glance…</p>
+              <p>This is a common phishing trick known as typosquatting…</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pane">
+        <div class="label next">Proposed</div>
+        <div class="nxt">
+          <div class="panel">
+            <div class="ph">
+              <div class="mascot small">calm<br>face</div>
+              <div class="brand">WHYSHIELD<small>Explain why</small></div>
+            </div>
+            <div class="pm">
+              <span class="badge mal">Malicious</span>
+              <div>
+                <div class="u">http://paypa1.com/login</div>
+                <div class="s">Typosquat of paypal.com</div>
+              </div>
+            </div>
+            <div class="crystals" aria-hidden="true">
+              <svg class="crystal" viewBox="0 0 22 26"><path d="M11 1 L21 8 L17 25 L5 25 L1 8 Z" fill="#8b5cf6" stroke="#c4a7f7" stroke-width="1.5"/><path d="M11 1 L11 25" stroke="#c4a7f7" stroke-width="1" opacity=".6"/></svg>
+              <svg class="crystal" viewBox="0 0 22 26" style="opacity:.6"><path d="M11 1 L21 8 L17 25 L5 25 L1 8 Z" fill="#8b5cf6" stroke="#c4a7f7" stroke-width="1.5"/></svg>
+              <svg class="crystal" viewBox="0 0 22 26" style="opacity:.3"><path d="M11 1 L21 8 L17 25 L5 25 L1 8 Z" fill="#8b5cf6" stroke="#c4a7f7" stroke-width="1.5"/></svg>
+            </div>
+            <div class="pb">
+              <p>This site uses "paypa1.com" — notice that the letter "l" at the end of "paypal" has been swapped out for the number "1." The two characters look nearly identical at a glance, especially in certain fonts.</p>
+              <p>This is a common phishing trick known as typosquatting, where someone registers a domain that looks almost identical to a trusted brand<span class="cursor"></span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SCREEN 3: OPTIONS ================= -->
+  <section>
+    <h2><span class="num">04</span> Options page</h2>
+    <p class="lead">Section headers become small-caps labels with a rule — a deliberate, slightly editorial feel rather than card-stacking. Toggles and the slider thumb are square to match the outline language. Calm-face Watcher in the header.</p>
+    <div class="compare">
+      <div class="pane">
+        <div class="label now">Current</div>
+        <div class="cur">
+          <div class="cur-opt">
+            <h3>WhyShield <span style="font-size:13px;color:#94a3b8;font-weight:400">Settings</span></h3>
+            <div class="cur-osec">
+              <div class="st">Warnings</div>
+              <div class="cur-row"><div class="cur-tog"></div><div><b>Warn me about look-alike websites</b><span>Checks each page before it loads…</span></div></div>
+              <div class="cur-row"><div class="cur-tog"></div><div><b>Warn me about suspicious emails in Gmail</b><span>Shows a banner above an open email…</span></div></div>
+            </div>
+            <div class="cur-osec">
+              <div class="st">Trusted sites</div>
+              <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px;font-family:monospace;font-size:12px;color:#64748b;min-height:56px">example.com<br>intranet.mycompany.com</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pane">
+        <div class="label next">Proposed</div>
+        <div class="nxt">
+          <div class="opt">
+            <div class="oh">
+              <div class="mascot small">calm<br>face</div>
+              <div><h3>WhyShield</h3><div class="sub">Settings</div></div>
+            </div>
+            <div class="osec">
+              <div class="st">Warnings</div>
+              <div class="row"><div class="tog"></div><div><b>Warn me about look-alike websites</b><span>Checks each page before it loads and pauses if it might be impersonating a real site.</span></div></div>
+              <div class="row"><div class="tog"></div><div><b>Warn me about suspicious emails in Gmail</b><span>Shows a banner above an open email when something about it looks off.</span></div></div>
+              <div class="slider">
+                <div class="lab"><span>More warnings</span><span>Fewer warnings</span></div>
+                <div class="track"></div>
+              </div>
+            </div>
+            <div class="osec">
+              <div class="st">Trusted sites</div>
+              <div class="ta">example.com<br>intranet.mycompany.com</div>
+              <div class="hint">Applies to website warnings. Emails are always checked, because sender addresses can be faked.</div>
+            </div>
+            <div class="obtns">
+              <div class="nxt-btn primary" style="flex:0 0 auto;padding:10px 22px">Save</div>
+              <div class="nxt-btn secondary" style="flex:0 0 auto;padding:10px 22px">Reset to defaults</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= MOTIFS ================= -->
+  <section>
+    <h2><span class="num">05</span> Motif library</h2>
+    <p class="lead">Geometric, drawn from scratch, usable without any character art. These carry the identity even in places where a mascot would be too much (Gmail banner, toolbar badge, favicon).</p>
+    <div class="motifs">
+      <div class="motif">
+        <div class="art"><svg viewBox="0 0 100 100" width="70" height="70"><path d="M15 15 L85 85 M85 15 L15 85" stroke="#d11a2a" stroke-width="13" stroke-linecap="square"/></svg></div>
+        <b>THE X</b><span>Blocked / not what it claims. Watermark on malicious warnings. Could be the toolbar badge when a page is flagged.</span>
+      </div>
+      <div class="motif">
+        <div class="art"><svg viewBox="0 0 44 52" width="54" height="64"><path d="M22 2 L42 16 L34 50 L10 50 L2 16 Z" fill="#8b5cf6" stroke="#c4a7f7" stroke-width="2"/><path d="M22 2 L22 50 M2 16 L42 16" stroke="#c4a7f7" stroke-width="1.2" opacity=".55"/></svg></div>
+        <b>THE CRYSTAL</b><span>Analyzing / thinking. Loading state in the side panel. Favicon candidate. Brand accent color source.</span>
+      </div>
+      <div class="motif">
+        <div class="art"><svg viewBox="0 0 80 80" width="70" height="70"><path d="M40 4 L34 28 L48 36 L30 52 L42 76" stroke="#d11a2a" stroke-width="3" fill="none"/><path d="M40 4 L52 20 M30 52 L18 58" stroke="#d11a2a" stroke-width="2" fill="none"/></svg></div>
+        <b>THE CRACK</b><span>"This isn't what it appears to be." Small treatment beside headlines on spoof warnings. Never on safe states.</span>
+      </div>
+      <div class="motif">
+        <div class="art"><div style="display:flex;gap:14px"><div style="width:28px;height:28px;border-radius:50%;background:#f2b705;box-shadow:0 0 0 4px #3d2e05"></div><div style="width:28px;height:28px;border-radius:50%;background:#d11a2a;box-shadow:0 0 0 4px #3a0a12"></div></div></div>
+        <b>THE TWO ORBS</b><span>Gold = suspicious, crimson = malicious. Abstract stand-in for the calm-eye / red-eye duality where the mascot itself won't fit.</span>
+      </div>
+      <div class="motif">
+        <div class="art"><div style="width:120px;height:44px;border:3px solid #4a2c7a;box-shadow:5px 5px 0 #332052;background:#1f1235"></div></div>
+        <b>THE OUTLINE</b><span>3px border + flat offset shadow on every card. The sticker-sheet feel, translated to UI. No blur shadows anywhere.</span>
+      </div>
+      <div class="motif">
+        <div class="art"><div style="height:8px;width:120px;background:linear-gradient(90deg,#d11a2a 0 50%,#f2b705 50%)"></div></div>
+        <b>THE BAND</b><span>6px verdict stripe at the top of cards. Crimson for malicious, gold for suspicious. Replaces the ⚠ as the first thing the eye reads.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= IMPLEMENTATION NOTES ================= -->
+  <section>
+    <h2><span class="num">06</span> Notes for the implementation session</h2>
+    <div class="notes">
+      <h3>What changes, what doesn't</h3>
+      <ol>
+        <li><b>Layouts and copy stay exactly as they are.</b> This is a reskin, not a redesign of the UX. Every button, every hint, every tone-rule-compliant sentence survives.</li>
+        <li><b>Palette moves to CSS custom properties in one shared file</b> (<code>extension/src/shared/theme.css</code>) imported by warning, side panel, and options. Today the three surfaces each hard-code slate values.</li>
+        <li><b>Fonts:</b> ship one display face (Space Grotesk or similar) and one text face bundled as woff2 in <code>public/fonts/</code> — no Google Fonts at runtime, extensions should never phone home for assets. Fall back to system fonts.</li>
+        <li><b>Mascot slots are fixed-size boxes.</b> Hand-out pose: 96×96 on the warning card. Calm face: 44×44 in side panel and options headers. Art is dropped in as PNG with transparent background; CSS doesn't change when the art arrives.</li>
+        <li><b>The X watermark and crack only render when</b> <code>verdict === "malicious"</code>. Suspicious gets the gold band and no crack. Safe states never show either.</li>
+        <li><b>Gmail banner is the exception:</b> it lives inside Gmail's UI, so it gets the palette and the band but no mascot, no watermark, lighter border. Restraint there.</li>
+        <li><b>Contrast check every pairing.</b> Crimson on ink, gold on ink, muted lavender on surface — all need to clear WCAG AA. The gold especially; it may need a slightly darker variant for small text.</li>
+        <li><b>Toolbar icon</b> becomes the crystal on ink, 128px, with the X overlaid when a page is flagged (badge state).</li>
+      </ol>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

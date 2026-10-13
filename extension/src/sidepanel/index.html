@@ -4,11 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WhyShield</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
     <link rel="stylesheet" href="./sidepanel.css" />
   </head>
   <body data-state="opening">
     <header class="header">
-      <div class="brand">WhyShield</div>
+      <div class="brand-row">
+        <img
+          id="mascot"
+          class="mascot"
+          src="/mascot/calm-face@1x.png"
+          srcset="/mascot/calm-face@1x.png 1x, /mascot/calm-face@2x.png 2x"
+          width="44"
+          height="44"
+          alt=""
+        />
+        <div class="brand">WhyShield</div>
+      </div>
       <div class="meta" id="meta" hidden>
         <span class="badge" id="badge"></span>
         <div class="meta-text">
@@ -19,14 +31,22 @@
       </div>
     </header>
     <main class="content">
-      <div id="skeleton" class="skeleton">
-        <div class="skel-line"></div>
-        <div class="skel-line"></div>
-        <div class="skel-line short"></div>
+      <!-- Loading state: three crystal shards at decreasing opacity. -->
+      <div id="skeleton" class="skeleton" aria-hidden="true">
+        <svg class="crystal" viewBox="0 0 22 26">
+          <path d="M11 1 L21 8 L17 25 L5 25 L1 8 Z" fill="#8b5cf6" stroke="#c4a7f7" stroke-width="1.5" />
+          <path d="M11 1 L11 25" stroke="#c4a7f7" stroke-width="1" opacity=".6" />
+        </svg>
+        <svg class="crystal" viewBox="0 0 22 26">
+          <path d="M11 1 L21 8 L17 25 L5 25 L1 8 Z" fill="#8b5cf6" stroke="#c4a7f7" stroke-width="1.5" />
+        </svg>
+        <svg class="crystal" viewBox="0 0 22 26">
+          <path d="M11 1 L21 8 L17 25 L5 25 L1 8 Z" fill="#8b5cf6" stroke="#c4a7f7" stroke-width="1.5" />
+        </svg>
       </div>
       <p id="explanation" class="explanation" hidden></p>
       <div id="error-actions" class="error-actions" hidden>
-        <button id="retry-btn" type="button" class="btn-retry">Try again</button>
+        <button id="retry-btn" type="button" class="btn btn-primary btn-retry">Try again</button>
       </div>
       <div id="empty" class="empty" hidden>
         <p>

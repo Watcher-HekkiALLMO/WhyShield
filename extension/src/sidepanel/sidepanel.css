@@ -1,3 +1,7 @@
+/* Side panel ("Explain why"). Palette, fonts, and buttons come from
+ * ../shared/theme.css; this file lays out the panel and animates the
+ * mascot. */
+
 *,
 *::before,
 *::after {
@@ -8,9 +12,9 @@ html,
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  background: #0f172a;
-  color: #e2e8f0;
+  font-family: var(--w-font-text);
+  background: var(--w-surface);
+  color: var(--w-text);
 }
 
 body {
@@ -19,28 +23,103 @@ body {
   flex-direction: column;
 }
 
+/* sidepanel.ts toggles the `hidden` attribute; the display rules below
+ * would otherwise override the attribute's user-agent display: none. */
+[hidden] {
+  display: none !important;
+}
+
 .header {
-  padding: 16px 20px 12px;
-  border-bottom: 1px solid #1e293b;
-  background: #0f172a;
+  padding: 12px 16px;
+  border-bottom: 2px solid var(--w-line-soft);
+  background: var(--w-ink);
   position: sticky;
   top: 0;
   z-index: 1;
 }
 
-.brand {
-  font-size: 14px;
-  font-weight: 600;
-  color: #f1f5f9;
-  letter-spacing: 0.02em;
-  margin-bottom: 8px;
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
+
+.brand {
+  font-family: var(--w-font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+/* ---- Mascot motion -------------------------------------------------- */
+
+.mascot {
+  width: 44px;
+  height: 44px;
+  display: block;
+  /* Near the neck, so a nod reads as the head tipping, not the whole
+   * image bobbing. The calm-face bust has its chin around 80% down. */
+  transform-origin: 50% 82%;
+}
+
+/* Idle "breathe": barely there, on in every state that has content.
+ * Kept at index 0 of the animation list in both rules below so adding a
+ * nod never restarts it (animations are matched by list position). */
+body[data-state="streaming"] .mascot,
+body[data-state="complete"] .mascot,
+body[data-state="error"] .mascot {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+/* Nod: one per SSE chunk, throttled in sidepanel.ts so a burst of chunks
+ * can't start a new nod before the previous one ends. Streaming only. */
+body[data-state="streaming"] .mascot.nod {
+  animation: breathe 3s ease-in-out infinite, nod 150ms ease-out;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(1px);
+  }
+}
+
+@keyframes nod {
+  0% {
+    transform: rotate(0) translateY(0);
+  }
+  40% {
+    transform: rotate(-2.5deg) translateY(1px);
+  }
+  75% {
+    transform: rotate(1deg) translateY(0);
+  }
+  100% {
+    transform: rotate(0) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot,
+  .mascot.nod {
+    animation: none;
+    transform: none;
+  }
+}
+
+/* ---- Verdict meta ---------------------------------------------------- */
 
 .meta {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
+  margin-top: 10px;
 }
 
 .meta-text {
@@ -51,125 +130,140 @@ body {
   flex: 1 1 auto;
 }
 
+/* Bordered tag, not a pill. Text colors are the AA-safe variants. */
 .badge {
   display: inline-block;
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
+  padding: 4px 9px;
+  font-family: var(--w-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
   flex-shrink: 0;
-  background: #475569;
-  color: #f1f5f9;
+  border: 2px solid var(--w-line);
+  background: var(--w-surface-2);
+  color: var(--w-muted);
 }
 
 .badge-malicious {
-  background: #7f1d1d;
-  color: #fee2e2;
+  color: var(--w-crimson-text);
+  border-color: var(--w-crimson);
+  background: var(--w-crimson-bg);
 }
 .badge-suspicious {
-  background: #92400e;
-  color: #fef3c7;
+  color: var(--w-gold);
+  border-color: var(--w-gold);
+  background: var(--w-gold-bg);
 }
 .badge-safe {
-  background: #475569;
-  color: #f1f5f9;
+  color: var(--w-muted);
+  border-color: var(--w-line);
+  background: var(--w-surface-2);
 }
 
-.url {
-  font-family: ui-monospace, SFMono-Regular, monospace;
+.url,
+.sender {
+  font-family: var(--w-font-mono);
   font-size: 12px;
-  color: #94a3b8;
+  color: #fff;
   word-break: break-all;
   min-width: 0;
 }
 
-/* Email-context meta: sender on top (monospace, slightly brighter for
- * the address-like content), subject below (proportional, subdued). */
-.sender {
-  font-family: ui-monospace, SFMono-Regular, monospace;
-  font-size: 12px;
-  color: #cbd5e1;
-  word-break: break-all;
-}
 .subject {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--w-muted);
   line-height: 1.4;
   word-break: break-word;
 }
 
+/* ---- Content --------------------------------------------------------- */
+
 .content {
   flex: 1 1 auto;
-  padding: 20px;
+  padding: 16px;
 }
 
-.skeleton .skel-line {
-  height: 14px;
-  background: linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite linear;
-  border-radius: 4px;
-  margin-bottom: 12px;
+.skeleton {
+  display: flex;
+  gap: 8px;
 }
-.skeleton .skel-line.short {
-  width: 60%;
+.crystal {
+  width: 22px;
+  height: 26px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+.crystal:nth-child(2) {
+  opacity: 0.6;
+  animation-delay: 0.25s;
+}
+.crystal:nth-child(3) {
+  opacity: 0.3;
+  animation-delay: 0.5s;
 }
 
 @keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
+  0%,
   100% {
-    background-position: -200% 0;
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crystal {
+    animation: none;
   }
 }
 
 .explanation {
   font-size: 15px;
   line-height: 1.6;
-  color: #cbd5e1;
+  color: var(--w-text-body);
   margin: 0;
   /* preserve the \n\n paragraph breaks Sonnet emits */
   white-space: pre-wrap;
 }
 
+/* Streaming cursor: a crystal-colored block after the last character. */
+body[data-state="streaming"] .explanation::after {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 15px;
+  background: var(--w-crystal-hi);
+  vertical-align: -2px;
+  margin-left: 2px;
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
 .error-actions {
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid #1e293b;
+  border-top: 1px solid var(--w-line-soft);
 }
 
 .btn-retry {
-  appearance: none;
-  background: #2563eb;
-  color: white;
-  border: 1px solid #1d4ed8;
-  border-radius: 8px;
-  font: inherit;
   font-size: 13px;
-  font-weight: 500;
   padding: 8px 16px;
-  cursor: pointer;
-  transition: background 120ms ease;
-}
-.btn-retry:hover {
-  background: #1d4ed8;
-}
-.btn-retry:focus-visible {
-  outline: 2px solid #93c5fd;
-  outline-offset: 2px;
 }
 
 .empty {
   text-align: center;
-  color: #94a3b8;
+  color: var(--w-muted);
   font-size: 14px;
   line-height: 1.6;
   padding: 40px 16px;
 }
 .empty strong {
-  color: #e2e8f0;
-  font-weight: 600;
+  color: var(--w-text);
+  font-weight: 700;
 }

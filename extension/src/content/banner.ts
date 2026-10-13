@@ -60,9 +60,11 @@ export function findBanner(msgEl: Element, messageId: string): HTMLElement | nul
 // ---------- internals ----------
 
 function buildShadow(root: ShadowRoot, verdict: AnalyzeResponse): void {
-  // Static markup with no untrusted interpolation. Headline and subtitle
-  // are set via textContent below, which can't trigger HTML parsing even
-  // if the model returned something funky in `explanation`.
+  // Static markup with no interpolation at all. The verdict class (band
+  // color), headline, and subtitle are applied afterwards via classList
+  // and textContent, which can't trigger HTML parsing. The verdict is a
+  // bare cast of backend JSON and the backend URL is user-configurable,
+  // so nothing from it may be concatenated into this string.
   root.innerHTML = `
     <style>${BANNER_CSS}</style>
     <div class="banner" role="region" aria-label="WhyShield warning">
@@ -84,6 +86,7 @@ function buildShadow(root: ShadowRoot, verdict: AnalyzeResponse): void {
       </div>
     </div>
   `;
+  root.querySelector(".banner")?.classList.add(`banner-${verdict.verdict}`);
   const headline = root.querySelector<HTMLParagraphElement>(".headline");
   const subtitle = root.querySelector<HTMLParagraphElement>(".subtitle");
   if (headline) headline.textContent = headlineFor(verdict.reasons);
@@ -152,45 +155,67 @@ export function truncateExplanation(text: string): string {
   return `${cut.trimEnd()}…`;
 }
 
-// Inline stylesheet. Mirrors the warning interstitial's color palette
-// (warning.css) so the banner reads as the same product. Tighter
-// padding + smaller type because it lives inside Gmail, not standalone.
+// Inline stylesheet. The Watcher palette, inlined because a Shadow DOM
+// inside Gmail can't reach src/shared/theme.css; keep the hex values in
+// sync with it. Deliberately restrained versus the warning page: no
+// mascot, no watermark, 2px border instead of 3px, no offset shadow. It
+// lives inside Gmail's UI and should read as a note, not a poster. System
+// fonts, since bundled fonts would need a web-accessible font file.
 const BANNER_CSS = `
   :host {
     all: initial;
     display: block;
     margin: 8px 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --w-ink: #120a1f;
+    --w-surface: #1f1235;
+    --w-surface-2: #2a1a47;
+    --w-line: #4a2c7a;
+    --w-line-soft: #332052;
+    --w-text: #f3eefa;
+    --w-text-body: #e3d9f0;
+    --w-muted: #b9a8d4;
+    --w-crystal: #8b5cf6;
+    --w-crystal-hi: #c4a7f7;
+    --w-crystal-deep: #7c4de6;
+    --w-crimson: #d11a2a;
+    --w-crimson-text: #f04452;
+    --w-gold: #f2b705;
   }
   .banner {
+    /* On .banner, not :host: the host's inline all:initial outranks a
+     * :host rule, which is why the old banner fell back to a serif. */
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
     display: flex;
     gap: 12px;
     align-items: flex-start;
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 10px;
+    background: var(--w-surface);
+    border: 2px solid var(--w-line);
+    /* The verdict band, as a thicker top edge. */
+    border-top: 6px solid var(--w-line);
     padding: 14px 16px;
-    color: #e2e8f0;
+    color: var(--w-text);
     font-size: 14px;
     line-height: 1.5;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   }
+  .banner-malicious { border-top-color: var(--w-crimson); }
+  .banner-suspicious { border-top-color: var(--w-gold); }
   .icon {
-    color: #f59e0b;
+    color: var(--w-gold);
     font-size: 22px;
     line-height: 1;
     flex-shrink: 0;
   }
+  .banner-malicious .icon { color: var(--w-crimson-text); }
   .body { flex: 1; min-width: 0; }
   .headline {
     font-size: 15px;
-    font-weight: 600;
-    color: #f1f5f9;
+    font-weight: 700;
+    color: #fff;
     margin: 0 0 4px;
     line-height: 1.4;
   }
   .subtitle {
-    color: #cbd5e1;
+    color: var(--w-text-body);
     margin: 0 0 12px;
   }
   .actions {
@@ -200,39 +225,43 @@ const BANNER_CSS = `
   }
   .btn {
     appearance: none;
-    border: 1px solid transparent;
-    border-radius: 6px;
+    border: 2px solid transparent;
+    border-radius: 0;
     font: inherit;
     font-size: 13px;
-    font-weight: 500;
-    padding: 7px 14px;
+    font-weight: 700;
+    padding: 6px 14px;
     cursor: pointer;
     transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
   }
   .btn:focus-visible {
-    outline: 2px solid #93c5fd;
+    outline: 2px solid var(--w-crystal-hi);
     outline-offset: 2px;
   }
   .btn-primary {
-    background: #2563eb;
+    background: var(--w-crystal-deep);
     color: #fff;
-    border-color: #1d4ed8;
+    border-color: var(--w-crystal-hi);
   }
-  .btn-primary:hover { background: #1d4ed8; }
+  .btn-primary:hover { background: #6d3bd9; }
   .btn-secondary {
     background: transparent;
-    color: #93c5fd;
-    border-color: #334155;
+    color: var(--w-crystal-hi);
+    border-color: var(--w-crystal);
   }
   .btn-secondary:hover {
-    background: #0f172a;
-    border-color: #475569;
+    background: var(--w-surface-2);
+    border-color: var(--w-crystal-hi);
   }
   .btn-tertiary {
     background: transparent;
-    color: #94a3b8;
+    color: var(--w-muted);
     border: none;
-    padding: 7px 10px;
+    font-weight: 500;
+    padding: 6px 10px;
+    text-decoration: underline;
+    text-decoration-color: var(--w-line);
+    text-underline-offset: 3px;
   }
-  .btn-tertiary:hover { color: #cbd5e1; }
+  .btn-tertiary:hover { color: var(--w-text); }
 `;

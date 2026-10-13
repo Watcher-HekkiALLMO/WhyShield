@@ -19,7 +19,30 @@ const els = {
   errorActions: document.getElementById("error-actions") as HTMLDivElement,
   retryBtn: document.getElementById("retry-btn") as HTMLButtonElement,
   empty: document.getElementById("empty") as HTMLDivElement,
+  mascot: document.getElementById("mascot") as HTMLImageElement,
 };
+
+// The mascot "talks along" with the stream: one short nod per chunk that
+// appended text. Throttled by the animation itself: a new nod cannot
+// start until animationend (or animationcancel, if the state changes
+// mid-nod) clears the flag, so a burst of tiny chunks produces one nod,
+// not jitter. Under prefers-reduced-motion the CSS has no animation, so
+// the class toggle is inert and no end event ever fires; harmless.
+let nodding = false;
+
+function nod(): void {
+  if (nodding) return;
+  nodding = true;
+  els.mascot.classList.add("nod");
+}
+
+function endNod(e: AnimationEvent): void {
+  if (e.animationName !== "nod") return;
+  els.mascot.classList.remove("nod");
+  nodding = false;
+}
+els.mascot.addEventListener("animationend", endNod);
+els.mascot.addEventListener("animationcancel", endNod);
 
 function setState(state: State): void {
   document.body.dataset.state = state;
@@ -80,6 +103,7 @@ function handleSseEvent(eventStr: string): void {
     const chunk = JSON.parse(data) as string;
     accumulatedText += chunk;
     els.explanation.textContent = accumulatedText;
+    if (chunk.length > 0) nod();
     // Keep the latest text visible as the stream grows.
     document.scrollingElement?.scrollTo({
       top: document.scrollingElement.scrollHeight,

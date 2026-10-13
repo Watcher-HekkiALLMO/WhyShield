@@ -1,0 +1,164 @@
+/* WhyShield visual identity: the Watcher palette.
+ *
+ * Source of truth is design/design-direction.html. Hex values here are
+ * copied from it verbatim; the two *-text / *-deep additions exist only
+ * because the mockup's colors fail WCAG AA when used as small text (see
+ * the contrast table in CLAUDE.md > Visual identity). Imported by the
+ * warning page, side panel, and options page. The Gmail banner cannot
+ * reach this file (Shadow DOM inside Gmail), so banner.ts inlines the
+ * same values with a pointer back here. */
+
+@font-face {
+  font-family: "Space Grotesk";
+  font-weight: 500;
+  font-display: block;
+  src: url("/fonts/space-grotesk-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Space Grotesk";
+  font-weight: 700;
+  font-display: block;
+  src: url("/fonts/space-grotesk-latin-700-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Sans";
+  font-weight: 400;
+  font-display: block;
+  src: url("/fonts/dm-sans-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Sans";
+  font-weight: 500;
+  font-display: block;
+  src: url("/fonts/dm-sans-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Sans";
+  font-weight: 700;
+  font-display: block;
+  src: url("/fonts/dm-sans-latin-700-normal.woff2") format("woff2");
+}
+
+:root {
+  --w-ink: #120a1f;
+  --w-surface: #1f1235;
+  --w-surface-2: #2a1a47;
+  --w-line: #4a2c7a;
+  --w-line-soft: #332052;
+  --w-text: #f3eefa;
+  --w-text-body: #e3d9f0;
+  --w-muted: #b9a8d4;
+  --w-crystal: #8b5cf6;
+  --w-crystal-hi: #c4a7f7;
+  --w-crimson: #d11a2a;
+  --w-crimson-bg: #3a0a12;
+  --w-gold: #f2b705;
+  --w-gold-bg: #3d2e05;
+
+  /* Crimson as small text. #d11a2a on ink is 3.6:1; this is 5.2:1. The
+   * band, X, and crack stay on the true crimson since they are not text. */
+  --w-crimson-text: #f04452;
+  /* Primary button fill. White on #8b5cf6 is 4.2:1; on this it is 5.2:1. */
+  --w-crystal-deep: #7c4de6;
+
+  --w-font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --w-font-text: "DM Sans", "Segoe UI", system-ui, sans-serif;
+  --w-font-mono: ui-monospace, "Cascadia Code", SFMono-Regular, Consolas, monospace;
+
+  /* The outline motif: thick border plus a flat offset shadow, never a
+   * blur. Shared so every card on every surface uses the same numbers. */
+  --w-outline-width: 3px;
+  --w-outline-offset: 6px;
+}
+
+/* ---- Reusable treatments ------------------------------------------- */
+
+.w-outline {
+  background: var(--w-surface);
+  border: var(--w-outline-width) solid var(--w-line);
+  box-shadow: var(--w-outline-offset) var(--w-outline-offset) 0 var(--w-line-soft);
+}
+
+/* Verdict band: 6px stripe across the top of a card. Color is driven by
+ * the surface's data-verdict attribute so TS never touches the band. */
+.w-band {
+  height: 6px;
+  background: var(--w-line);
+}
+[data-verdict="malicious"] .w-band {
+  background: var(--w-crimson);
+}
+[data-verdict="suspicious"] .w-band {
+  background: var(--w-gold);
+}
+
+/* Small-caps label: section titles, address label, badges. */
+.w-label {
+  font-family: var(--w-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ---- Buttons --------------------------------------------------------- */
+
+.btn {
+  appearance: none;
+  border: 2px solid transparent;
+  border-radius: 0;
+  font-family: var(--w-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease, transform 80ms ease,
+    box-shadow 80ms ease;
+}
+.btn:focus-visible {
+  outline: 2px solid var(--w-crystal-hi);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  background: var(--w-crystal-deep);
+  color: #fff;
+  border-color: var(--w-crystal-hi);
+  box-shadow: 3px 3px 0 var(--w-line);
+}
+.btn-primary:hover {
+  /* Darker, not lighter: white on the lighter crystal falls under AA. */
+  background: #6d3bd9;
+}
+.btn-primary:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--w-line);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--w-crystal-hi);
+  border-color: var(--w-crystal);
+}
+.btn-secondary:hover {
+  background: var(--w-surface-2);
+  border-color: var(--w-crystal-hi);
+}
+
+.btn-tertiary {
+  background: transparent;
+  color: var(--w-muted);
+  border: none;
+  font-family: var(--w-font-text);
+  font-weight: 500;
+  font-size: 13px;
+  padding: 8px;
+  text-decoration: underline;
+  text-decoration-color: var(--w-line);
+  text-underline-offset: 3px;
+}
+.btn-tertiary:hover {
+  color: var(--w-text);
+  text-decoration-color: var(--w-muted);
+}
