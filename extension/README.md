@@ -128,7 +128,8 @@ Every runtime consumer reads these through `getSettings()` in `src/shared/settin
 1. Add `paypa1.com` under Trusted sites, save, navigate to `http://paypa1.com/login`. No warning, and no `/analyze/url` request in the backend log.
 2. Remove it, drag Sensitivity to 0.9, save. Borderline "suspicious" verdicts stop warning; the `paypa1.com` typosquat (a "malicious" verdict) still warns.
 3. Turn off "Warn me about suspicious emails in Gmail", reload Gmail, open the test phishing email from the recipe above. No banner. Turn it back on without reloading Gmail, click into another email and back. Banner returns.
-4. Paste a deliberately wrong key (e.g. `sk-ant-test`) into the API key field and save. Trigger a warning and click **Explain why**. The side panel shows the static fallback paragraph instead of a streamed explanation, because the backend used your bad key for that request and failed open. That confirms the header reached the backend. Clear the field and save to go back to the shared key, and the stream comes back.
+4. Paste a deliberately wrong key (e.g. `sk-ant-test`) into the API key field and save. Trigger a warning and click **Explain why**. The backend answers `401 { "error": "byok-rejected" }` instead of streaming, so the side panel lands on its error state with **Try again**. Switch back to the settings tab: an amber notice under the key field reads "This key was rejected by Anthropic. Check it and save again." Clear the field and save. The notice disappears and the stream comes back on the shared key. A rejected key is never silently swapped for the shared one.
+5. Type `http://192.168.1.10:8787` as the backend address and save. The save is refused with "Use https:// for remote backends. http:// is only allowed for localhost." `http://localhost:8787` and `http://127.0.0.1:8787` still save.
 
 ## "Explain why" streaming
 

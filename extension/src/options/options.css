@@ -96,6 +96,13 @@ body {
   color: #fca5a5;
 }
 
+/* Amber, not red: a rejected key is something to fix, not a threat. */
+.notice {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #fcd34d;
+}
+
 input[type="url"],
 input[type="password"],
 textarea {

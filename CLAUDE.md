@@ -190,6 +190,35 @@ Stack:
   never attached. A `chrome.storage.onChanged` listener starts it if the
   user turns the setting on with Gmail open. Turning it off mid-session
   is honored on the next observer tick.
+- The Gmail content script uses `getContentScriptSettings()`, a
+  key-free getter that reads only `emailWarnings` and `sensitivity` from
+  `chrome.storage.sync` and never touches the local area. The script
+  runs inside the mail.google.com tab; Chrome's isolated world keeps
+  page JavaScript out, but the API key has no reason to enter that
+  context at all. This is the one sanctioned exception to "every
+  consumer calls getSettings()". The underlying rule, no direct
+  `chrome.storage` reads outside settings.ts, still holds.
+- Rejected BYOK keys never fail silently. When Anthropic refuses a
+  user-supplied key, the backend answers `401 { error: "byok-rejected" }`
+  instead of a generic failure, and does **not** fall back to the shared
+  key. `postToBackend()` sees that status, writes `byokRejectedAt` to
+  `chrome.storage.local`, and the options page shows a calm notice under
+  the key field until the next successful save clears the flag. Without
+  this, a mistyped key would turn every uncached check into a fail-open
+  with no sign to the user that protection was gone. The explain routes
+  open the model stream before starting the SSE response for the same
+  reason: once SSE headers go out, the status can't change.
+- Remote backends must be `https://`. `http://` is accepted only for
+  `localhost`, `127.0.0.1`, and `[::1]`, because the request carries the
+  user's key and email contents.
+- **Documented trade-off: backend URL lives in sync storage.** The
+  security reviewer noted that a writer to the synced blob (a compromised
+  Google account, or another device signed in to it) could repoint the
+  backend and the next request would carry the local key and email
+  content to that origin. We keep the URL in sync anyway: the threat
+  model already requires a compromised Google account, at which point
+  the user's Gmail itself is exposed, and moving the URL to local
+  storage would break settings sync for that narrow gain.
 
 ## Known v2 priorities
 

@@ -21,7 +21,9 @@
 // are out of scope. Inbox, All Mail, search results, labels, spam, trash
 // are all analyzed.
 
-import { getSettings } from "../shared/settings";
+// Key-free getter: this script runs inside the Gmail tab and must never
+// pull the user's API key into that context. See settings.ts.
+import { getContentScriptSettings } from "../shared/settings";
 import type { AnalyzeEmailRequest, AnalyzeResponse, ExplainEmailContext } from "../shared/types";
 import { findBanner, injectBanner, removeBanner } from "./banner";
 import {
@@ -82,7 +84,7 @@ async function processCurrentMessage(): Promise<void> {
     // Read per tick, not once at bootstrap, so a sensitivity change or
     // switching email warnings off applies to the next message opened
     // without reloading Gmail.
-    const settings = await getSettings();
+    const settings = await getContentScriptSettings();
     if (!settings.emailWarnings) return;
 
     const msgEl = findLatestExpandedMessage();
@@ -239,7 +241,7 @@ async function bootstrap(): Promise<void> {
   // this tab is open, the storage listener below starts the observer
   // without needing a reload. Turning it off mid-session is handled per
   // tick inside processCurrentMessage.
-  const settings = await getSettings();
+  const settings = await getContentScriptSettings();
   if (settings.emailWarnings) void startObserving();
 
   chrome.storage.onChanged.addListener((changes, area) => {

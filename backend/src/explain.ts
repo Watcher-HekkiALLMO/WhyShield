@@ -73,31 +73,62 @@ export interface StreamExplanationParams {
   fallback: string;
 }
 
-// Stream a Sonnet explanation as SSE deltas, with a static fallback if
-// the model call throws. SSE shape: each text delta sent as
-// `data: ${JSON.stringify(text)}\n\n` (JSON-encoded so newlines and quotes
-// survive); stream ends with `data: [DONE]\n\n`.
-export async function streamExplanation(
-  stream: SSEStreamingApi,
+export type OpenedExplanation =
+  | { ok: true; events: AsyncIterable<Anthropic.Messages.RawMessageStreamEvent> }
+  | { ok: false; error: unknown };
+
+// Step 1 of 2: open the model stream. This runs BEFORE the route starts
+// its SSE response, because once SSE headers are sent the HTTP status is
+// fixed at 200. Opening first lets the route answer 401 when a user's
+// own key is rejected (see apiKeyFor in index.ts). The SDK rejects this
+// promise on auth failure; it does not wait for the first token.
+export async function openExplanation(
   apiKey: string,
-  params: StreamExplanationParams,
-): Promise<void> {
+  params: Pick<StreamExplanationParams, "system" | "user">,
+): Promise<OpenedExplanation> {
   const client = new Anthropic({ apiKey });
   try {
-    const response = await client.messages.create({
+    const events = await client.messages.create({
       model: EXPLAIN_MODEL,
       max_tokens: 1024,
       system: params.system,
       messages: [{ role: "user", content: params.user }],
       stream: true,
     });
-    for await (const event of response) {
+    return { ok: true, events };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}
+
+// Step 2 of 2: pump text deltas into SSE, with a static fallback if the
+// stream failed to open or dies mid-way (fail-open). SSE shape: each
+// text delta sent as `data: ${JSON.stringify(text)}\n\n` (JSON-encoded so
+// newlines and quotes survive); stream ends with `data: [DONE]\n\n`.
+export async function pumpExplanation(
+  stream: SSEStreamingApi,
+  opened: OpenedExplanation,
+  fallback: string,
+): Promise<void> {
+  try {
+    if (!opened.ok) throw opened.error;
+    for await (const event of opened.events) {
       if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
         await stream.writeSSE({ data: JSON.stringify(event.delta.text) });
       }
     }
   } catch {
-    await stream.writeSSE({ data: JSON.stringify(params.fallback) });
+    await stream.writeSSE({ data: JSON.stringify(fallback) });
   }
   await stream.writeSSE({ data: "[DONE]" });
+}
+
+// Convenience for callers that don't need the two-step split.
+export async function streamExplanation(
+  stream: SSEStreamingApi,
+  apiKey: string,
+  params: StreamExplanationParams,
+): Promise<void> {
+  const opened = await openExplanation(apiKey, params);
+  await pumpExplanation(stream, opened, params.fallback);
 }

@@ -1,13 +1,23 @@
 import {
+  BYOK_REJECTED_STORAGE_KEY,
   DEFAULT_SETTINGS,
   type Settings,
+  getByokRejectedAt,
   getSettings,
   normalizeBackendUrl,
   normalizeHost,
   saveSettings,
 } from "../shared/settings";
 
+const BACKEND_URL_MESSAGES = {
+  invalid: "That doesn't look like a web address. It should start with http:// or https://.",
+  insecure: "Use https:// for remote backends. http:// is only allowed for localhost.",
+} as const;
+
+const BYOK_REJECTED_MESSAGE = "This key was rejected by Anthropic. Check it and save again.";
+
 const els = {
+  apiKeyNotice: document.getElementById("api-key-notice") as HTMLParagraphElement,
   form: document.getElementById("settings-form") as HTMLFormElement,
   urlWarnings: document.getElementById("url-warnings") as HTMLInputElement,
   emailWarnings: document.getElementById("email-warnings") as HTMLInputElement,
@@ -64,15 +74,16 @@ type ReadResult =
 // Validate every field before writing anything. A save is all-or-nothing
 // so the user never ends up with half their changes applied.
 function readForm(): ReadResult {
-  const backendUrl = normalizeBackendUrl(els.backendUrl.value);
-  if (backendUrl === null) {
+  const backendResult = normalizeBackendUrl(els.backendUrl.value);
+  if ("error" in backendResult) {
     return {
       ok: false,
       field: els.backendUrl,
       errorEl: els.backendUrlError,
-      message: "That doesn't look like a web address. It should start with http:// or https://.",
+      message: BACKEND_URL_MESSAGES[backendResult.error],
     };
   }
+  const backendUrl = backendResult.url;
 
   const trustedHosts: string[] = [];
   for (const line of els.trustedHosts.value.split("\n")) {
@@ -118,8 +129,25 @@ async function onSave(event: SubmitEvent): Promise<void> {
   // Re-fill from what we saved so normalization (lowercasing, stripped
   // slashes) is visible immediately.
   fillForm(result.settings);
+  // saveSettings cleared the rejected flag; hide the notice to match.
+  renderByokNotice(false);
   showStatus("Saved");
 }
+
+function renderByokNotice(rejected: boolean): void {
+  els.apiKeyNotice.textContent = rejected ? BYOK_REJECTED_MESSAGE : "";
+  els.apiKeyNotice.hidden = !rejected;
+}
+
+// The flag can be set by the background worker while this page is open
+// (a navigation happens, the key is refused). Listen so the notice shows
+// without a reload.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local") return;
+  const change = changes[BYOK_REJECTED_STORAGE_KEY];
+  if (!change) return;
+  renderByokNotice(typeof change.newValue === "number");
+});
 
 async function onReset(): Promise<void> {
   await saveSettings(DEFAULT_SETTINGS);
@@ -132,3 +160,4 @@ els.resetBtn.addEventListener("click", () => void onReset());
 els.sensitivity.addEventListener("input", renderSensitivity);
 
 void getSettings().then(fillForm);
+void getByokRejectedAt().then((at) => renderByokNotice(at !== null));

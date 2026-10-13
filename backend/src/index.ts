@@ -15,7 +15,8 @@ import {
   FALLBACK_TEXT,
   SYSTEM_PROMPT,
   buildUserMessage as buildExplainUrlUserMessage,
-  streamExplanation,
+  openExplanation,
+  pumpExplanation,
   validateExplainRequest,
 } from "./explain";
 import { runHeuristics } from "./heuristics";
@@ -36,9 +37,27 @@ const app = new Hono<{ Bindings: Env }>();
 // logging is ever added to this file, this header must be excluded.
 const API_KEY_HEADER = "X-WhyShield-API-Key";
 
-function apiKeyFor(c: Context<{ Bindings: Env }>): string {
+interface ResolvedKey {
+  apiKey: string;
+  // true when the key came from the header, so a 401 from Anthropic is
+  // the user's problem to fix rather than ours.
+  byok: boolean;
+}
+
+function apiKeyFor(c: Context<{ Bindings: Env }>): ResolvedKey {
   const own = c.req.header(API_KEY_HEADER)?.trim();
-  return own ? own : c.env.ANTHROPIC_API_KEY;
+  return own ? { apiKey: own, byok: true } : { apiKey: c.env.ANTHROPIC_API_KEY, byok: false };
+}
+
+// A rejected user key must surface, not fail open. The extension looks
+// for exactly this status + body (see extension/src/shared/backend.ts)
+// and shows a notice on the options page. We deliberately do NOT retry
+// with the shared key: that would bill us for a user's broken key and
+// hide the problem from them.
+const BYOK_REJECTED_BODY = { error: "byok-rejected" } as const;
+
+function isAnthropicAuthError(e: unknown): boolean {
+  return typeof e === "object" && e !== null && (e as { status?: unknown }).status === 401;
 }
 
 // CORS for extension pages (the side panel) talking to this backend.
@@ -92,12 +111,19 @@ app.post("/analyze/url", async (c) => {
     return c.json(heur.response);
   }
 
-  const claudeVerdict = await classifyWithClaude({
-    url: normalized.raw,
-    host: normalized.host,
-    heuristicHints: heur.inconclusiveReasons,
-    apiKey: apiKeyFor(c),
-  });
+  const key = apiKeyFor(c);
+  let claudeVerdict: AnalyzeResponse;
+  try {
+    claudeVerdict = await classifyWithClaude({
+      url: normalized.raw,
+      host: normalized.host,
+      heuristicHints: heur.inconclusiveReasons,
+      apiKey: key.apiKey,
+    });
+  } catch (e) {
+    if (key.byok && isAnthropicAuthError(e)) return c.json(BYOK_REJECTED_BODY, 401);
+    throw e;
+  }
   await putCachedVerdict(c.env.VERDICT_CACHE, cacheKey, claudeVerdict);
   return c.json(claudeVerdict);
 });
@@ -123,11 +149,18 @@ app.post("/analyze/email", async (c) => {
     return c.json(heur.response);
   }
 
-  const claudeVerdict = await classifyEmailWithClaude({
-    request: body,
-    heuristicHints: heur.inconclusiveReasons,
-    apiKey: apiKeyFor(c),
-  });
+  const key = apiKeyFor(c);
+  let claudeVerdict: AnalyzeResponse;
+  try {
+    claudeVerdict = await classifyEmailWithClaude({
+      request: body,
+      heuristicHints: heur.inconclusiveReasons,
+      apiKey: key.apiKey,
+    });
+  } catch (e) {
+    if (key.byok && isAnthropicAuthError(e)) return c.json(BYOK_REJECTED_BODY, 401);
+    throw e;
+  }
   await putCachedVerdict(c.env.VERDICT_CACHE, cacheKey, claudeVerdict);
   return c.json(claudeVerdict);
 });
@@ -139,13 +172,17 @@ app.post("/explain/url", async (c) => {
   if (!body) {
     return c.json({ error: "Required: { url, verdict, confidence, reasons[] }" }, 400);
   }
-  return streamSSE(c, (stream) =>
-    streamExplanation(stream, apiKeyFor(c), {
-      system: SYSTEM_PROMPT,
-      user: buildExplainUrlUserMessage(body),
-      fallback: FALLBACK_TEXT,
-    }),
-  );
+  // Open the model stream before streamSSE commits a 200, so a rejected
+  // user key can still be answered with 401. See openExplanation.
+  const key = apiKeyFor(c);
+  const opened = await openExplanation(key.apiKey, {
+    system: SYSTEM_PROMPT,
+    user: buildExplainUrlUserMessage(body),
+  });
+  if (!opened.ok && key.byok && isAnthropicAuthError(opened.error)) {
+    return c.json(BYOK_REJECTED_BODY, 401);
+  }
+  return streamSSE(c, (stream) => pumpExplanation(stream, opened, FALLBACK_TEXT));
 });
 
 app.post("/explain/email", async (c) => {
@@ -157,13 +194,15 @@ app.post("/explain/email", async (c) => {
       400,
     );
   }
-  return streamSSE(c, (stream) =>
-    streamExplanation(stream, apiKeyFor(c), {
-      system: SYSTEM_PROMPT_EMAIL,
-      user: buildExplainEmailUserMessage(body),
-      fallback: FALLBACK_TEXT_EMAIL,
-    }),
-  );
+  const key = apiKeyFor(c);
+  const opened = await openExplanation(key.apiKey, {
+    system: SYSTEM_PROMPT_EMAIL,
+    user: buildExplainEmailUserMessage(body),
+  });
+  if (!opened.ok && key.byok && isAnthropicAuthError(opened.error)) {
+    return c.json(BYOK_REJECTED_BODY, 401);
+  }
+  return streamSSE(c, (stream) => pumpExplanation(stream, opened, FALLBACK_TEXT_EMAIL));
 });
 
 // Inline validator for /analyze/email — small enough that a separate
