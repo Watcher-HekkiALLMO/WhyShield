@@ -182,6 +182,11 @@ Surfaced during smoke testing:
 - Combined-signal scoring: a suspicious TLD plus a brand keyword in the
   host name should score higher than the TLD alone. Currently each
   heuristic fires independently with no compounding.
+- Prize-fraud / reward-scam emails ("you've won a gift card") don't
+  trigger the banner — no urgency language, no credential request, no
+  typosquat link, so heuristics are inconclusive and Haiku rates them
+  below 0.7. Needs either a reward-scam keyword heuristic or a lower
+  threshold for brand-impersonation-in-subject + unknown sender.
 
 ### Real Watcher mascot
 Replace the placeholder shield SVG with the actual Watcher illustration.
