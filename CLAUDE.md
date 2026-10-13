@@ -100,6 +100,56 @@ Stack:
 - Reopening the side panel from the toolbar after consumption lands on the
   no-data state, by design.
 
+### Gmail integration
+- A content script (`extension/src/content/gmail.ts`) runs only on
+  `https://mail.google.com/*`, bootstraps on `document_idle`, then waits
+  for `[role="main"]` to mount before doing real work. Gmail's SPA shell
+  loads asynchronously after `document_idle` — sometimes seconds later.
+- DOM selectors are documented in a comment block at the top of
+  `extension/src/content/extractors.ts`. We anchor on semantic attributes
+  (`[data-legacy-message-id]`, `[email][name]`, `[role="main"] h2`) over
+  class names where possible, since Gmail rotates class names. The one
+  unavoidable class anchor is `.a3s` for the rendered message body —
+  it's been stable for years but is the most likely thing to break when
+  Gmail drifts.
+- Per-message identity is `data-legacy-message-id` (preferred — it's the
+  Gmail-API-stable id) with `data-message-id` as fallback. The safe-list
+  is keyed on this id and **does NOT propagate**: a "Mark as safe" on
+  one message does not blanket-trust replies, forwards, future emails
+  from the same sender, or even other messages in the same thread.
+  Phishers exploit exactly that kind of inherited trust by sending
+  follow-ups from look-alike senders after a victim has whitelisted one
+  "harmless" message. Same defensive scoping principle as the URL
+  bypass-by-host rule.
+- "Latest visible expanded" rule: among `[data-message-id]` nodes whose
+  `.a3s` body has rendered height (`offsetHeight > 0`), the last in DOM
+  order is what we analyze. If the user expands an older message, that
+  becomes the latest expanded one and we re-analyze. Collapsed message
+  stubs are skipped.
+- Folder skip list: `#sent`, `#drafts`, `#scheduled`, `#chats`. Inbox,
+  All Mail, search results, labels, spam, trash all get analyzed.
+- Banner is wrapped in Shadow DOM attached to a host
+  `<div data-whyshield-banner="<messageId>">`. Two reasons: Gmail's CSS
+  can't bleed in and shift our layout, and our CSS can't escape and
+  break Gmail's reading area. Inserted in document flow just before the
+  message's `.a3s` body, never floats.
+- Three banner buttons: Explain why → side panel via background's
+  `explain-email-context` handler (which both stashes context AND opens
+  the panel, since `chrome.sidePanel` isn't exposed to content scripts).
+  Mark as safe → background `mark-email-safe` (no TTL). Dismiss →
+  in-memory dismissed set in the content script, cleared on hashchange
+  per the "navigating away and back reappears the banner" spec.
+- Re-injection avoidance: the `analyze-email` background handler bundles
+  a safe-list pre-check, so once a message is marked safe, the very next
+  observer tick that fires after the banner removal asks for a verdict,
+  hears `{ skipped: true }`, and quietly does nothing. No flicker, no
+  re-injection.
+- Gmail's outbound link rewrite: every `<a>` href in the body is wrapped
+  as `https://www.google.com/url?q=<original>`. The link extractor
+  unwraps to the original URL before sending to the backend — otherwise
+  every link in every email would look like `google.com` to the
+  typosquat detector and we'd never flag anything.
+
 ## Known v2 priorities
 
 These are deliberate post-v1 items captured here so future sessions don't

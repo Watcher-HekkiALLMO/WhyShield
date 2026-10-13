@@ -3,9 +3,22 @@ import {
   SUSPICIOUS_INTERSTITIAL_THRESHOLD,
   WARNING_PAGE_PATH,
 } from "../shared/config";
-import type { AnalyzeResponse, ExplainContext } from "../shared/types";
-import { analyzeUrl } from "./api";
-import { bypassHost, getCachedVerdict, isHostBypassed, putCachedVerdict } from "./storage";
+import type {
+  AnalyzeEmailRequest,
+  AnalyzeResponse,
+  ExplainContext,
+} from "../shared/types";
+import { analyzeEmail, analyzeUrl } from "./api";
+import {
+  bypassHost,
+  getCachedEmailVerdict,
+  getCachedVerdict,
+  isHostBypassed,
+  isMessageMarkedSafe,
+  markMessageSafe,
+  putCachedEmailVerdict,
+  putCachedVerdict,
+} from "./storage";
 
 // Schemes we never analyze. chrome:// and chrome-extension:// belong to
 // Chrome itself; about: and file: aren't realistic phishing vectors and
@@ -93,7 +106,61 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: true });
       return;
     }
+    if (msg?.type === "analyze-email" && msg.payload) {
+      const verdict = await handleAnalyzeEmail(
+        msg.messageId as string | undefined,
+        msg.payload as AnalyzeEmailRequest,
+      );
+      sendResponse(verdict);
+      return;
+    }
+    if (msg?.type === "explain-email-context" && msg.context && sender.tab?.id !== undefined) {
+      // Mirror of the URL "explain-context" handler, plus a sidePanel.open
+      // call. The Gmail content script can't open the side panel itself
+      // (chrome.sidePanel isn't exposed to content scripts), so we
+      // delegate. The user-gesture from the banner button click is
+      // preserved across the runtime.sendMessage boundary, which is what
+      // chrome.sidePanel.open requires.
+      //
+      // CONTRACT: stash context in storage BEFORE opening the panel, so
+      // when the panel mounts and reads its tab's entry, it's there.
+      const tabId = sender.tab.id;
+      const key = `${EXPLAIN_CONTEXT_KEY_PREFIX}${tabId}`;
+      await chrome.storage.session.set({ [key]: msg.context as ExplainContext });
+      await chrome.sidePanel.open({ tabId });
+      sendResponse({ ok: true });
+      return;
+    }
+    if (msg?.type === "mark-email-safe" && typeof msg.messageId === "string") {
+      // CONTRACT: respond AFTER chrome.storage.local.set resolves so the
+      // content script's banner removal can rely on the safe-list being
+      // durable before the next mutation tick re-injects.
+      await markMessageSafe(msg.messageId);
+      sendResponse({ ok: true });
+      return;
+    }
     sendResponse({ ok: false });
   })();
   return true; // keep the response channel open for the async work above
 });
+
+// Email analysis flow. Mirrors the URL flow in onBeforeNavigate but
+// runs on demand from the Gmail content script (no navigation event to
+// hook). Bundles the safe-list pre-check so the content script doesn't
+// need a separate round-trip.
+async function handleAnalyzeEmail(
+  messageId: string | undefined,
+  payload: AnalyzeEmailRequest,
+): Promise<{ skipped: true } | { verdict: AnalyzeResponse } | { verdict: null }> {
+  if (messageId && (await isMessageMarkedSafe(messageId))) {
+    return { skipped: true };
+  }
+
+  const cached = await getCachedEmailVerdict(payload);
+  if (cached) return { verdict: cached };
+
+  const verdict = await analyzeEmail(payload);
+  if (!verdict) return { verdict: null }; // backend unreachable: fail open
+  await putCachedEmailVerdict(payload, verdict);
+  return { verdict };
+}

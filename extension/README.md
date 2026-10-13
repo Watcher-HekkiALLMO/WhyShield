@@ -65,6 +65,47 @@ To clear a bypass manually: `chrome://extensions` → WhyShield → **Service wo
 
 To clear all caches: same path, click **Clear all**.
 
+## Testing the email warning end-to-end
+
+With both terminals running, the extension loaded, and you signed into Gmail at `mail.google.com`:
+
+### Recipe: send yourself a fake-phishing email
+
+The cleanest test surface is an email you compose to your own address with content the heuristics will flag — banks-don't-send-from-gmail + a typosquat link is a guaranteed conclusive verdict. Steps:
+
+1. In Gmail, click **Compose**.
+2. **To:** your own Gmail address.
+3. **Subject:** `Action required: verify your account`
+4. **Body:**
+
+   ```
+   Final notice: please verify your password to keep your access active.
+
+   Continue: https://paypa1.com/login
+   ```
+
+5. Click **Send**. Gmail delivers it to your own inbox within seconds.
+6. Open the new email from your Inbox.
+7. Within ~1–2 seconds, the WhyShield banner appears above the message body.
+
+The link in step 4 is a typosquat of `paypal.com` — the backend bubbles it up as a conclusive `link-typosquat-of-brand` verdict, the banner headline reads "This email contains a link that looks like a phishing trick," and the subtitle is a one-or-two-sentence excerpt of the explanation.
+
+### Three buttons, three behaviors
+
+- **Explain why** → opens the side panel; the panel streams a Sonnet-generated 2–3 paragraph educational explanation of *the email*, header showing the sender (monospace) on top and subject below.
+- **Mark as safe** → banner disappears immediately. Reload the email — no banner. Reload Gmail — still no banner. The bypass is **per-message-id only**: forward the same email or open a different message from the same sender, and the new copy gets analyzed independently. To clear: `chrome://extensions` → WhyShield → **Service worker** → **Application** → **Storage** → **Extension Storage** → **Local** → delete the `email-safe:<messageId>` row.
+- **Dismiss** → banner disappears for this view only. Click into another conversation and back, or reload, and the banner reappears.
+
+### What gets skipped
+
+- Folders: `#sent`, `#drafts`, `#scheduled`, `#chats` — the URL hash check skips these without analyzing.
+- Collapsed messages in a thread — only the latest visible expanded message is analyzed. If you expand an older message in the thread, that becomes the analysis target.
+- Backend offline → no banner (fail open). Watch the Gmail tab's DevTools console for the network error.
+
+### Regression check: URL flow still works
+
+After loading the updated extension: navigate to `http://paypa1.com/login`. The URL warning interstitial should still appear with all three buttons working as before — the discriminated `ExplainContext` union doesn't break the existing path because warning.ts now passes `type: "url"` in its context payload.
+
 ## Pointing at a non-local backend
 
 `BACKEND_URL` is hardcoded in `src/shared/config.ts` to `http://localhost:8787`. When we deploy to Cloudflare, this becomes a `chrome.storage.local`-backed setting with a default. For now: edit the constant and rebuild.
@@ -77,7 +118,6 @@ Reopening the side panel from the toolbar (without a fresh "Explain why" click) 
 
 ## What's not done yet
 
-- Gmail content script / email warnings
 - Settings page (whitelist, sensitivity slider, dev/prod backend switcher)
 - Real Watcher mascot art (currently a placeholder shield SVG)
 - Chrome Web Store listing

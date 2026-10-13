@@ -1,6 +1,7 @@
 import {
   BACKEND_URL,
   EXPLAIN_CONTEXT_KEY_PREFIX,
+  EXPLAIN_EMAIL_PATH,
   EXPLAIN_URL_PATH,
 } from "../shared/config";
 import type { ExplainContext } from "../shared/types";
@@ -15,6 +16,8 @@ const els = {
   meta: document.getElementById("meta") as HTMLDivElement,
   badge: document.getElementById("badge") as HTMLSpanElement,
   urlDisplay: document.getElementById("url-display") as HTMLSpanElement,
+  emailSender: document.getElementById("email-sender") as HTMLSpanElement,
+  emailSubject: document.getElementById("email-subject") as HTMLSpanElement,
   skeleton: document.getElementById("skeleton") as HTMLDivElement,
   explanation: document.getElementById("explanation") as HTMLParagraphElement,
   errorActions: document.getElementById("error-actions") as HTMLDivElement,
@@ -32,9 +35,21 @@ function setState(state: State): void {
 }
 
 function renderHeader(ctx: ExplainContext): void {
-  els.urlDisplay.textContent = ctx.url;
   els.badge.className = `badge badge-${ctx.verdict}`;
   els.badge.textContent = ctx.verdict;
+
+  if (ctx.type === "url") {
+    els.urlDisplay.textContent = ctx.url;
+    els.urlDisplay.hidden = false;
+    els.emailSender.hidden = true;
+    els.emailSubject.hidden = true;
+  } else {
+    els.urlDisplay.hidden = true;
+    els.emailSender.textContent = ctx.from;
+    els.emailSender.hidden = false;
+    els.emailSubject.textContent = ctx.subject;
+    els.emailSubject.hidden = ctx.subject.length === 0;
+  }
 }
 
 async function getCurrentTabId(): Promise<number | undefined> {
@@ -109,8 +124,12 @@ async function startStream(ctx: ExplainContext): Promise<void> {
   renderHeader(ctx);
   setState("streaming");
 
+  // Endpoint depends on the source. The backend's validators ignore
+  // extra fields (the `type` discriminator), so we send ctx verbatim.
+  const path = ctx.type === "email" ? EXPLAIN_EMAIL_PATH : EXPLAIN_URL_PATH;
+
   try {
-    const res = await fetch(`${BACKEND_URL}${EXPLAIN_URL_PATH}`, {
+    const res = await fetch(`${BACKEND_URL}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(ctx),

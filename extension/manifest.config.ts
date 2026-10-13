@@ -21,6 +21,17 @@ export default defineManifest({
     service_worker: "src/background/index.ts",
     type: "module",
   },
+  // The Gmail content script bootstraps on document_idle so the SPA shell
+  // is already mounted; the script's own MutationObserver waits for the
+  // [role="main"] anchor before doing real work. host_permissions
+  // <all_urls> already covers mail.google.com, so no extra entry needed.
+  content_scripts: [
+    {
+      matches: ["https://mail.google.com/*"],
+      js: ["src/content/gmail.ts"],
+      run_at: "document_idle",
+    },
+  ],
   action: {
     default_icon: "icon.svg",
     default_title: "WhyShield",

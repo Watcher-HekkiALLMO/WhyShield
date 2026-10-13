@@ -15,6 +15,15 @@ export const WARNING_PAGE_PATH = "src/warning/index.html";
 // Backend SSE endpoint for streaming Claude explanations.
 export const EXPLAIN_URL_PATH = "/explain/url";
 
+// Backend endpoints for email analysis + streaming explanation.
+export const ANALYZE_EMAIL_PATH = "/analyze/email";
+export const EXPLAIN_EMAIL_PATH = "/explain/email";
+
+// chrome.storage.local key prefixes for email state. Both are documented
+// next to their consumers in background/storage.ts.
+export const EMAIL_VERDICT_KEY_PREFIX = "email-verdict:";
+export const EMAIL_SAFE_KEY_PREFIX = "email-safe:";
+
 // chrome.storage.session key prefix for per-tab explain context. Full
 // key: `${EXPLAIN_CONTEXT_KEY_PREFIX}${tabId}`. The side panel reads and
 // immediately deletes its tab's entry on mount, so reopening the panel

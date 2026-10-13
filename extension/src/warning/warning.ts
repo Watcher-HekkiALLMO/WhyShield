@@ -68,6 +68,10 @@ async function onExplainWhy(params: WarningParams): Promise<void> {
   await chrome.runtime.sendMessage({
     type: "explain-context",
     context: {
+      // `type` discriminator is required after the side panel started
+      // branching on context kind for the email flow. Missing it would
+      // crash the URL flow once sidepanel.ts treats ctx as a union.
+      type: "url",
       url: params.url,
       verdict: params.verdict,
       confidence: params.confidence,

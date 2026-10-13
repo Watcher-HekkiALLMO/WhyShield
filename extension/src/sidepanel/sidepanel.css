@@ -38,9 +38,17 @@ body {
 
 .meta {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.meta-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .badge {
@@ -74,8 +82,22 @@ body {
   font-size: 12px;
   color: #94a3b8;
   word-break: break-all;
-  flex: 1 1 auto;
   min-width: 0;
+}
+
+/* Email-context meta: sender on top (monospace, slightly brighter for
+ * the address-like content), subject below (proportional, subdued). */
+.sender {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 12px;
+  color: #cbd5e1;
+  word-break: break-all;
+}
+.subject {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .content {
